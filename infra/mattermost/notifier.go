@@ -18,18 +18,22 @@ type Notifier struct {
 	httpClient *http.Client
 }
 
-func NewNotifier(webhookURL string) *Notifier {
+func NewNotifier(webhookURL string, timeout time.Duration) *Notifier {
+	if timeout <= 0 {
+		timeout = 10 * time.Second
+	}
+
 	return &Notifier{
 		webhookURL: webhookURL,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: timeout,
 		},
 	}
 }
 
 func (notifier *Notifier) SendTaskNotification(ctx context.Context, task taskdomain.Task) error {
 	if notifier.webhookURL == "" {
-		return fmt.Errorf("mattermost webhook url is required")
+		return fmt.Errorf("MATTERMOST_OVERVIEW_WEBHOOK is required")
 	}
 
 	body, err := json.Marshal(map[string]string{

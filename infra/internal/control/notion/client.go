@@ -11,27 +11,49 @@ import (
 	"time"
 )
 
-const (
-	apiVersion = "2026-03-11"
-	baseURL    = "https://api.notion.com"
-)
-
 type Client struct {
 	apiKey     string
+	baseURL    string
+	apiVersion string
+	pageSize   int
 	httpClient *http.Client
 }
 
-func NewClient(apiKey string) *Client {
+type ClientConfig struct {
+	APIKey     string
+	BaseURL    string
+	APIVersion string
+	PageSize   int
+	Timeout    time.Duration
+}
+
+func NewClient(config ClientConfig) *Client {
+	if config.BaseURL == "" {
+		config.BaseURL = "https://api.notion.com"
+	}
+	if config.APIVersion == "" {
+		config.APIVersion = "2026-03-11"
+	}
+	if config.PageSize <= 0 {
+		config.PageSize = 100
+	}
+	if config.Timeout <= 0 {
+		config.Timeout = 10 * time.Second
+	}
+
 	return &Client{
-		apiKey: apiKey,
+		apiKey:     config.APIKey,
+		baseURL:    config.BaseURL,
+		apiVersion: config.APIVersion,
+		pageSize:   config.PageSize,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: config.Timeout,
 		},
 	}
 }
 
 func (client *Client) RetrieveDatabase(ctx context.Context, databaseID string) (map[string]any, error) {
-	endpoint := fmt.Sprintf("%s/v1/databases/%s", baseURL, url.PathEscape(databaseID))
+	endpoint := fmt.Sprintf("%s/v1/databases/%s", client.baseURL, url.PathEscape(databaseID))
 
 	return client.doJSON(ctx, http.MethodGet, endpoint, nil)
 }
@@ -78,13 +100,13 @@ func (client *Client) QueryDataSource(ctx context.Context, dataSourceID string) 
 
 	for {
 		requestBody := map[string]any{
-			"page_size": 100,
+			"page_size": client.pageSize,
 		}
 		if startCursor != "" {
 			requestBody["start_cursor"] = startCursor
 		}
 
-		endpoint := fmt.Sprintf("%s/v1/data_sources/%s/query", baseURL, url.PathEscape(dataSourceID))
+		endpoint := fmt.Sprintf("%s/v1/data_sources/%s/query", client.baseURL, url.PathEscape(dataSourceID))
 		response, err := client.doJSON(ctx, http.MethodPost, endpoint, requestBody)
 		if err != nil {
 			return nil, err
@@ -130,7 +152,7 @@ func (client *Client) retrieveBlockChildren(ctx context.Context, blockID string)
 	var startCursor string
 
 	for {
-		endpoint := fmt.Sprintf("%s/v1/blocks/%s/children?page_size=100", baseURL, url.PathEscape(blockID))
+		endpoint := fmt.Sprintf("%s/v1/blocks/%s/children?page_size=%d", client.baseURL, url.PathEscape(blockID), client.pageSize)
 		if startCursor != "" {
 			endpoint += "&start_cursor=" + url.QueryEscape(startCursor)
 		}
@@ -192,7 +214,7 @@ func (client *Client) doJSON(ctx context.Context, method string, endpoint string
 	}
 
 	request.Header.Set("Authorization", "Bearer "+client.apiKey)
-	request.Header.Set("Notion-Version", apiVersion)
+	request.Header.Set("Notion-Version", client.apiVersion)
 	request.Header.Set("Accept", "application/json")
 	if requestBody != nil {
 		request.Header.Set("Content-Type", "application/json")
