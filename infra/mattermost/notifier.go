@@ -69,7 +69,7 @@ func (notifier *Notifier) SendTaskNotification(ctx context.Context, task taskdom
 
 func formatTaskMessage(task taskdomain.Task) string {
 	var lines []string
-	lines = append(lines, "### "+task.Title)
+	lines = append(lines, "### "+task.DisplayTitle())
 
 	if task.Date != nil && task.Date.Start != nil {
 		lines = append(lines, "- date: "+task.Date.Start.Format(time.RFC3339))

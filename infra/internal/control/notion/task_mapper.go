@@ -1,6 +1,7 @@
 package notion
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -21,6 +22,7 @@ func RowToTask(row map[string]any) taskdomain.Task {
 
 	return taskdomain.Task{
 		ID:           fmt.Sprintf("%s:%s", taskdomain.SourceNotion, id),
+		DisplayID:    uniqueIDProperty(properties[OverviewTaskColumns.DisplayID]),
 		Title:        firstNonEmptyString(titleProperty(properties[OverviewTaskColumns.Title]), "Untitled"),
 		Status:       selectLikeOption(properties[OverviewTaskColumns.Status]),
 		Date:         dateProperty(properties[OverviewTaskColumns.Date]),
@@ -117,6 +119,25 @@ func dateProperty(value any) *taskdomain.DateRange {
 	}
 }
 
+func uniqueIDProperty(value any) string {
+	property := mapValue(value)
+	uniqueID := mapValue(property["unique_id"])
+	if uniqueID == nil {
+		return ""
+	}
+
+	number := numberString(uniqueID["number"])
+	if number == "" {
+		return ""
+	}
+
+	prefix := stringValue(uniqueID["prefix"])
+	if prefix == "" {
+		return number
+	}
+	return prefix + "-" + number
+}
+
 func richTextPlainText(value any) string {
 	texts, ok := value.([]any)
 	if !ok {
@@ -154,6 +175,21 @@ func mapValue(value any) map[string]any {
 func stringValue(value any) string {
 	result, _ := value.(string)
 	return result
+}
+
+func numberString(value any) string {
+	switch number := value.(type) {
+	case float64:
+		return fmt.Sprintf("%.0f", number)
+	case int:
+		return fmt.Sprintf("%d", number)
+	case int64:
+		return fmt.Sprintf("%d", number)
+	case json.Number:
+		return number.String()
+	default:
+		return ""
+	}
 }
 
 func firstNonEmptyString(values ...string) string {
