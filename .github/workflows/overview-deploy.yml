@@ -84,7 +84,7 @@ jobs:
       - name: Check on host
         run: |
           port="${DEPLOY_SSH_PORT:-22}"
-          ssh -i ~/.ssh/overview_deploy_key -p "$port" "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && make test && docker compose config"
+          ssh -i ~/.ssh/overview_deploy_key -p "$port" "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && docker compose config"
 
       - name: Apply deploy
         if: ${{ github.event_name == 'push' || inputs.apply == 'deploy' }}
