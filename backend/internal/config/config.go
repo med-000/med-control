@@ -12,6 +12,10 @@ import (
 type Config struct {
 	Addr                      string
 	MattermostOverviewWebhook string
+	MattermostCommandToken    string
+	MattermostRemindToken     string
+	MattermostQuickToken      string
+	InfraQuickTaskEndpoint    string
 	TaskNotifyInterval        time.Duration
 	HTTPTimeout               time.Duration
 }
@@ -29,6 +33,10 @@ func Load() Config {
 	return Config{
 		Addr:                      addr,
 		MattermostOverviewWebhook: os.Getenv("MATTERMOST_OVERVIEW_WEBHOOK"),
+		MattermostCommandToken:    os.Getenv("MATTERMOST_COMMAND_TOKEN"),
+		MattermostRemindToken:     firstNonEmpty(os.Getenv("MATTERMOST_REMIND_COMMAND_TOKEN"), os.Getenv("MATTERMOST_COMMAND_TOKEN")),
+		MattermostQuickToken:      firstNonEmpty(os.Getenv("MATTERMOST_QUICK_COMMAND_TOKEN"), os.Getenv("MATTERMOST_COMMAND_TOKEN")),
+		InfraQuickTaskEndpoint:    os.Getenv("INFRA_QUICK_TASK_ENDPOINT"),
 		TaskNotifyInterval:        durationFromSeconds(os.Getenv("TASK_NOTIFY_INTERVAL_SECONDS"), 0),
 		HTTPTimeout:               durationFromSeconds(os.Getenv("HTTP_TIMEOUT_SECONDS"), 10*time.Second),
 	}
@@ -80,4 +88,13 @@ func loadEnvFile(path string) error {
 	}
 
 	return scanner.Err()
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if value != "" {
+			return value
+		}
+	}
+	return ""
 }

@@ -11,6 +11,7 @@ import (
 	apptask "github.com/med-000/overview/backend/internal/app/task"
 	"github.com/med-000/overview/backend/internal/config"
 	"github.com/med-000/overview/backend/internal/control/httpapi"
+	infracontrol "github.com/med-000/overview/backend/internal/control/infra"
 	"github.com/med-000/overview/backend/internal/control/memory"
 	"github.com/med-000/overview/infra/mattermost"
 )
@@ -22,11 +23,15 @@ func main() {
 
 	taskRepository := memory.NewTaskRepository()
 	taskNotifier := mattermost.NewNotifier(cfg.MattermostOverviewWebhook, cfg.HTTPTimeout)
-	taskService := apptask.NewService(taskRepository, taskNotifier)
+	taskCreator := infracontrol.NewTaskCreator(cfg.InfraQuickTaskEndpoint, cfg.HTTPTimeout)
+	taskService := apptask.NewService(taskRepository, taskNotifier, taskCreator)
 	go taskService.RunNotificationLoop(ctx, cfg.TaskNotifyInterval)
 
 	mux := http.NewServeMux()
-	handler := httpapi.NewHandler(taskService)
+	handler := httpapi.NewHandler(taskService, httpapi.MattermostCommandTokens{
+		Remind: cfg.MattermostRemindToken,
+		Quick:  cfg.MattermostQuickToken,
+	})
 	handler.Register(mux)
 
 	fmt.Printf("backend listening on %s\n", cfg.Addr)

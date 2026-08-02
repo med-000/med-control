@@ -9,6 +9,7 @@
 - `shared/domain/task.Task` に整形
 - backend に POST
 - `POST /notion/webhook` で Notion Webhook を受け、該当 page を即時同期
+- `POST /tasks/quick` で backend から quick task 作成依頼を受け、Notion page を作る
 - Mattermost Incoming Webhook 送信実装を `infra/mattermost` に保持
 
 ## 構成

@@ -2,21 +2,25 @@ package memory
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"time"
 
+	apptask "github.com/med-000/overview/backend/internal/app/task"
 	taskdomain "github.com/med-000/overview/shared/domain/task"
 )
 
 type TaskRepository struct {
 	mu                   sync.RWMutex
 	tasks                map[string]taskdomain.Task
+	reminderOverrides    map[string]taskdomain.DateRange
 	sentNotificationKeys map[string]time.Time
 }
 
 func NewTaskRepository() *TaskRepository {
 	return &TaskRepository{
 		tasks:                make(map[string]taskdomain.Task),
+		reminderOverrides:    make(map[string]taskdomain.DateRange),
 		sentNotificationKeys: make(map[string]time.Time),
 	}
 }
@@ -28,6 +32,9 @@ func (repository *TaskRepository) UpsertMany(ctx context.Context, tasks []taskdo
 	for _, task := range tasks {
 		if task.ID == "" {
 			continue
+		}
+		if override, exists := repository.reminderOverrides[task.ID]; exists {
+			task.Notification = &override
 		}
 		repository.tasks[task.ID] = task
 	}
@@ -46,6 +53,36 @@ func (repository *TaskRepository) List(ctx context.Context, filter taskdomain.Fi
 		result = append(result, task)
 	}
 	return result, nil
+}
+
+func (repository *TaskRepository) FindByDisplayID(ctx context.Context, displayID string) (taskdomain.Task, error) {
+	repository.mu.RLock()
+	defer repository.mu.RUnlock()
+
+	for _, task := range repository.tasks {
+		if displayIDMatches(task.DisplayID, displayID) {
+			return task, nil
+		}
+	}
+	return taskdomain.Task{}, apptask.ErrTaskNotFound
+}
+
+func (repository *TaskRepository) ScheduleReminder(ctx context.Context, displayID string, remindAt time.Time) (taskdomain.Task, error) {
+	repository.mu.Lock()
+	defer repository.mu.Unlock()
+
+	for id, task := range repository.tasks {
+		if !displayIDMatches(task.DisplayID, displayID) {
+			continue
+		}
+
+		override := taskdomain.DateRange{Start: &remindAt}
+		task.Notification = &override
+		repository.tasks[id] = task
+		repository.reminderOverrides[id] = override
+		return task, nil
+	}
+	return taskdomain.Task{}, apptask.ErrTaskNotFound
 }
 
 func (repository *TaskRepository) DueForNotification(ctx context.Context, now time.Time) ([]taskdomain.Task, error) {
@@ -73,6 +110,9 @@ func (repository *TaskRepository) MarkNotificationSent(ctx context.Context, task
 	defer repository.mu.Unlock()
 
 	repository.sentNotificationKeys[notificationKey(task)] = sentAt
+	if override, exists := repository.reminderOverrides[task.ID]; exists && sameNotificationStart(&override, task.Notification) {
+		delete(repository.reminderOverrides, task.ID)
+	}
 	return nil
 }
 
@@ -81,6 +121,13 @@ func notificationKey(task taskdomain.Task) string {
 		return task.ID
 	}
 	return task.ID + ":" + task.Notification.Start.Format(time.RFC3339Nano)
+}
+
+func sameNotificationStart(left *taskdomain.DateRange, right *taskdomain.DateRange) bool {
+	if left == nil || right == nil || left.Start == nil || right.Start == nil {
+		return false
+	}
+	return left.Start.Equal(*right.Start)
 }
 
 func matchesFilter(task taskdomain.Task, filter taskdomain.Filter) bool {
@@ -116,11 +163,25 @@ func matchesFilter(task taskdomain.Task, filter taskdomain.Filter) bool {
 
 func displayIDIn(displayID string, ids []string) bool {
 	for _, id := range ids {
-		if displayID == id {
+		if displayIDMatches(displayID, id) {
 			return true
 		}
 	}
 	return false
+}
+
+func displayIDMatches(displayID string, query string) bool {
+	displayID = strings.ToLower(strings.TrimSpace(displayID))
+	query = strings.ToLower(strings.TrimSpace(query))
+	if displayID == "" || query == "" {
+		return false
+	}
+	if displayID == query {
+		return true
+	}
+
+	hyphen := strings.LastIndex(displayID, "-")
+	return hyphen >= 0 && displayID[hyphen+1:] == query
 }
 
 func selectIDIn(option *taskdomain.SelectOption, ids []string) bool {
