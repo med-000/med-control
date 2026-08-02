@@ -144,6 +144,14 @@ NOITON_OVERVIEW_DB_KEY
 `TS_OAUTH_CLIENT_ID` と `TS_OAUTH_SECRET` は Tailscale 経由で SSH するために必要。
 Tailscale OAuth client は `tag:github-actions` を使えるようにしておく。
 
+任意の Secret:
+
+```text
+NOTION_WEBHOOK_VERIFICATION_TOKEN
+```
+
+Notion Webhook の初回 verification で取得した token。設定すると infra が `X-Notion-Signature` を検証する。
+
 ## Variables
 
 必須:

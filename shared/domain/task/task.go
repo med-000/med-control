@@ -4,6 +4,7 @@ import "time"
 
 type Task struct {
 	ID           string         `json:"id"`
+	DisplayID    string         `json:"display_id,omitempty"`
 	Title        string         `json:"title"`
 	Status       *SelectOption  `json:"status,omitempty"`
 	Date         *DateRange     `json:"date,omitempty"`
@@ -29,7 +30,15 @@ type DateRange struct {
 	TimeZone string     `json:"time_zone,omitempty"`
 }
 
+func (item Task) DisplayTitle() string {
+	if item.DisplayID == "" {
+		return item.Title
+	}
+	return "[" + item.DisplayID + "] " + item.Title
+}
+
 type CreateCommand struct {
+	DisplayID    string         `json:"display_id,omitempty"`
 	Title        string         `json:"title"`
 	Status       *SelectOption  `json:"status,omitempty"`
 	Date         *DateRange     `json:"date,omitempty"`
@@ -41,6 +50,7 @@ type CreateCommand struct {
 }
 
 type UpdateCommand struct {
+	DisplayID    *string         `json:"display_id,omitempty"`
 	Title        *string         `json:"title,omitempty"`
 	Status       *SelectOption   `json:"status,omitempty"`
 	Date         *DateRange      `json:"date,omitempty"`
@@ -52,6 +62,7 @@ type UpdateCommand struct {
 }
 
 type Filter struct {
+	DisplayIDs  []string   `json:"display_ids,omitempty"`
 	StatusIDs   []string   `json:"status_ids,omitempty"`
 	StatusNames []string   `json:"status_names,omitempty"`
 	LabelIDs    []string   `json:"label_ids,omitempty"`

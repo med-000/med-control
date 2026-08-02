@@ -1,6 +1,7 @@
 package notion
 
 type TaskColumns struct {
+	DisplayID    string
 	Title        string
 	Status       string
 	Date         string
@@ -11,6 +12,7 @@ type TaskColumns struct {
 }
 
 var OverviewTaskColumns = TaskColumns{
+	DisplayID:    "No",
 	Title:        "title",
 	Status:       "status",
 	Date:         "date",

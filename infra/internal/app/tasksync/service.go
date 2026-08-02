@@ -9,6 +9,7 @@ import (
 
 type TaskSource interface {
 	FetchTasks(ctx context.Context) ([]taskdomain.Task, error)
+	FetchTaskByPageID(ctx context.Context, pageID string) (taskdomain.Task, error)
 	FetchRawRows(ctx context.Context) ([]map[string]any, error)
 }
 
@@ -51,4 +52,21 @@ func (service *Service) SyncTasks(ctx context.Context) ([]taskdomain.Task, error
 	}
 
 	return tasks, nil
+}
+
+func (service *Service) SyncTaskByPageID(ctx context.Context, pageID string) (taskdomain.Task, error) {
+	if service.destination == nil {
+		return taskdomain.Task{}, fmt.Errorf("task destination is required")
+	}
+
+	task, err := service.source.FetchTaskByPageID(ctx, pageID)
+	if err != nil {
+		return taskdomain.Task{}, err
+	}
+
+	if err := service.destination.SendTasks(ctx, []taskdomain.Task{task}); err != nil {
+		return taskdomain.Task{}, err
+	}
+
+	return task, nil
 }

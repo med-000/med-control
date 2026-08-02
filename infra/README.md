@@ -8,15 +8,17 @@
 - page 本文を Markdown に変換
 - `shared/domain/task.Task` に整形
 - backend に POST
+- `POST /notion/webhook` で Notion Webhook を受け、該当 page を即時同期
 - Mattermost Incoming Webhook 送信実装を `infra/mattermost` に保持
 
 ## 構成
 
 ```text
-cmd/app                    Notion 同期 worker。5 分ごとに同期
+cmd/app                    Notion 同期 worker。5 分ごとの polling と Webhook 受信
 cmd/raw                    Notion 生データ確認
 cmd/tasks                  backend に渡す整形済み task 確認
 internal/app/tasksync      同期 usecase
+internal/control/httpapi   Notion Webhook handler
 internal/control/notion    Notion API client / mapper / schema
 internal/control/backend   backend への送信
 mattermost                 Mattermost webhook 実装
@@ -39,8 +41,27 @@ NOTION_API_KEY=
 NOITON_OVERVIEW_DB_KEY=
 BACKEND_TASKS_ENDPOINT=http://localhost:8085/tasks/import
 NOTION_SYNC_INTERVAL_SECONDS=300
+NOTION_WEBHOOK_ADDR=:8080
+NOTION_WEBHOOK_VERIFICATION_TOKEN=
 NOTION_API_BASE_URL=https://api.notion.com
 NOTION_API_VERSION=2026-03-11
 NOTION_PAGE_SIZE=100
 HTTP_TIMEOUT_SECONDS=10
 ```
+
+## Notion Webhook
+
+Notion connection の Webhooks で以下を登録する。
+
+```text
+Webhook URL: https://<public-host>/notion/webhook
+Event types:
+  page.created
+  page.properties_updated
+  page.content_updated
+  data_source.content_updated
+  data_source.schema_updated
+```
+
+初回登録時、Notion は `verification_token` を送る。infra のログに出る token を Notion の verify 画面に貼る。
+本番では同じ token を `NOTION_WEBHOOK_VERIFICATION_TOKEN` に入れると `X-Notion-Signature` を検証する。

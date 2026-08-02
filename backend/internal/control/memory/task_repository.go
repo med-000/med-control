@@ -84,6 +84,9 @@ func notificationKey(task taskdomain.Task) string {
 }
 
 func matchesFilter(task taskdomain.Task, filter taskdomain.Filter) bool {
+	if len(filter.DisplayIDs) > 0 && !displayIDIn(task.DisplayID, filter.DisplayIDs) {
+		return false
+	}
 	if len(filter.StatusIDs) > 0 && !selectIDIn(task.Status, filter.StatusIDs) {
 		return false
 	}
@@ -109,6 +112,15 @@ func matchesFilter(task taskdomain.Task, filter taskdomain.Filter) bool {
 		return false
 	}
 	return true
+}
+
+func displayIDIn(displayID string, ids []string) bool {
+	for _, id := range ids {
+		if displayID == id {
+			return true
+		}
+	}
+	return false
 }
 
 func selectIDIn(option *taskdomain.SelectOption, ids []string) bool {
