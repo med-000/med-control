@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,6 +12,7 @@ import (
 	"github.com/med-000/overview/infra/internal/app/tasksync"
 	"github.com/med-000/overview/infra/internal/config"
 	backendcontrol "github.com/med-000/overview/infra/internal/control/backend"
+	"github.com/med-000/overview/infra/internal/control/httpapi"
 	notioncontrol "github.com/med-000/overview/infra/internal/control/notion"
 )
 
@@ -39,6 +41,28 @@ func main() {
 	taskSource := notioncontrol.NewTaskRepository(notionClient, cfg.NoitonOverviewDBKey)
 	taskDestination := backendcontrol.NewTaskSender(cfg.BackendTasksEndpoint, cfg.HTTPTimeout)
 	service := tasksync.NewService(taskSource, taskDestination)
+
+	mux := http.NewServeMux()
+	handler := httpapi.NewHandler(service, cfg.NotionWebhookVerificationToken)
+	handler.Register(mux)
+
+	server := &http.Server{
+		Addr:    cfg.NotionWebhookAddr,
+		Handler: mux,
+	}
+	go func() {
+		<-ctx.Done()
+		if err := server.Shutdown(context.Background()); err != nil {
+			log.Printf("notion webhook server shutdown failed: %v", err)
+		}
+	}()
+	go func() {
+		log.Printf("notion webhook server listening on %s", cfg.NotionWebhookAddr)
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("notion webhook server failed: %v", err)
+			stop()
+		}
+	}()
 
 	log.Printf("notion sync worker started: interval=%s", cfg.NotionSyncInterval)
 	service.RunSyncLoop(ctx, cfg.NotionSyncInterval)

@@ -25,10 +25,13 @@ services:
     environment:
       BACKEND_TASKS_ENDPOINT: "http://backend:8080/tasks/import"
       NOTION_SYNC_INTERVAL_SECONDS: "300"
+      NOTION_WEBHOOK_ADDR: ":8080"
       NOTION_API_BASE_URL: "https://api.notion.com"
       NOTION_API_VERSION: "2026-03-11"
       NOTION_PAGE_SIZE: "100"
       HTTP_TIMEOUT_SECONDS: "10"
+    ports:
+      - "8090:8080"
     depends_on:
       backend:
         condition: service_healthy

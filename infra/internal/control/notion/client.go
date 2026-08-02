@@ -94,6 +94,22 @@ func (client *Client) RetrieveDatabaseTasks(ctx context.Context, databaseID stri
 	return rows, nil
 }
 
+func (client *Client) RetrievePageTask(ctx context.Context, pageID string) (map[string]any, error) {
+	endpoint := fmt.Sprintf("%s/v1/pages/%s", client.baseURL, url.PathEscape(pageID))
+	page, err := client.doJSON(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	description, err := client.RetrievePageMarkdown(ctx, pageID)
+	if err != nil {
+		return nil, err
+	}
+	page["description"] = description
+
+	return page, nil
+}
+
 func (client *Client) QueryDataSource(ctx context.Context, dataSourceID string) ([]map[string]any, error) {
 	var rows []map[string]any
 	var startCursor string

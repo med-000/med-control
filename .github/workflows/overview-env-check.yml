@@ -16,6 +16,7 @@ jobs:
       MATTERMOST_OVERVIEW_WEBHOOK: ${{ secrets.MATTERMOST_OVERVIEW_WEBHOOK }}
       NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
       NOITON_OVERVIEW_DB_KEY: ${{ secrets.NOITON_OVERVIEW_DB_KEY }}
+      NOTION_WEBHOOK_VERIFICATION_TOKEN: ${{ secrets.NOTION_WEBHOOK_VERIFICATION_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 

@@ -10,14 +10,16 @@ import (
 )
 
 type Config struct {
-	NotionAPIKey         string
-	NoitonOverviewDBKey  string
-	BackendTasksEndpoint string
-	NotionSyncInterval   time.Duration
-	NotionAPIBaseURL     string
-	NotionAPIVersion     string
-	NotionPageSize       int
-	HTTPTimeout          time.Duration
+	NotionAPIKey                   string
+	NoitonOverviewDBKey            string
+	BackendTasksEndpoint           string
+	NotionSyncInterval             time.Duration
+	NotionWebhookAddr              string
+	NotionWebhookVerificationToken string
+	NotionAPIBaseURL               string
+	NotionAPIVersion               string
+	NotionPageSize                 int
+	HTTPTimeout                    time.Duration
 }
 
 func Load() Config {
@@ -31,12 +33,14 @@ func Load() Config {
 			os.Getenv("NOITON_OVERVIEW_DB_KEY"),
 			os.Getenv("NOTION_OVERVIEW_DB_KEY"),
 		),
-		BackendTasksEndpoint: os.Getenv("BACKEND_TASKS_ENDPOINT"),
-		NotionSyncInterval:   durationFromSeconds(os.Getenv("NOTION_SYNC_INTERVAL_SECONDS"), 5*time.Minute),
-		NotionAPIBaseURL:     stringWithFallback(os.Getenv("NOTION_API_BASE_URL"), "https://api.notion.com"),
-		NotionAPIVersion:     stringWithFallback(os.Getenv("NOTION_API_VERSION"), "2026-03-11"),
-		NotionPageSize:       intWithFallback(os.Getenv("NOTION_PAGE_SIZE"), 100),
-		HTTPTimeout:          durationFromSeconds(os.Getenv("HTTP_TIMEOUT_SECONDS"), 10*time.Second),
+		BackendTasksEndpoint:           os.Getenv("BACKEND_TASKS_ENDPOINT"),
+		NotionSyncInterval:             durationFromSeconds(os.Getenv("NOTION_SYNC_INTERVAL_SECONDS"), 5*time.Minute),
+		NotionWebhookAddr:              stringWithFallback(os.Getenv("NOTION_WEBHOOK_ADDR"), ":8080"),
+		NotionWebhookVerificationToken: os.Getenv("NOTION_WEBHOOK_VERIFICATION_TOKEN"),
+		NotionAPIBaseURL:               stringWithFallback(os.Getenv("NOTION_API_BASE_URL"), "https://api.notion.com"),
+		NotionAPIVersion:               stringWithFallback(os.Getenv("NOTION_API_VERSION"), "2026-03-11"),
+		NotionPageSize:                 intWithFallback(os.Getenv("NOTION_PAGE_SIZE"), 100),
+		HTTPTimeout:                    durationFromSeconds(os.Getenv("HTTP_TIMEOUT_SECONDS"), 10*time.Second),
 	}
 }
 
