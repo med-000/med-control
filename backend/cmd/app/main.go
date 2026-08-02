@@ -13,6 +13,7 @@ import (
 	"github.com/med-000/overview/backend/internal/control/httpapi"
 	infracontrol "github.com/med-000/overview/backend/internal/control/infra"
 	"github.com/med-000/overview/backend/internal/control/memory"
+	sqlitecontrol "github.com/med-000/overview/backend/internal/control/sqlite"
 	"github.com/med-000/overview/infra/mattermost"
 )
 
@@ -21,7 +22,13 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	taskRepository := memory.NewTaskRepository()
+	notificationStore, err := sqlitecontrol.NewNotificationStore(cfg.DBPath)
+	if err != nil {
+		exitWithError(fmt.Sprintf("open backend db failed: %v", err))
+	}
+	defer notificationStore.Close()
+
+	taskRepository := memory.NewTaskRepository(notificationStore)
 	taskNotifier := mattermost.NewNotifier(cfg.MattermostOverviewWebhook, cfg.HTTPTimeout)
 	taskCreator := infracontrol.NewTaskCreator(cfg.InfraQuickTaskEndpoint, cfg.HTTPTimeout)
 	taskService := apptask.NewService(taskRepository, taskNotifier, taskCreator)
@@ -36,7 +43,11 @@ func main() {
 
 	fmt.Printf("backend listening on %s\n", cfg.Addr)
 	if err := http.ListenAndServe(cfg.Addr, mux); err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		exitWithError(err.Error())
 	}
+}
+
+func exitWithError(message string) {
+	fmt.Fprintln(os.Stderr, message)
+	os.Exit(1)
 }

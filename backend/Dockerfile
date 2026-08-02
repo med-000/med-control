@@ -19,11 +19,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /out/backend ./cmd/app
 
 FROM alpine:3.20
 
-RUN addgroup -S app && adduser -S app -G app
+RUN apk add --no-cache sqlite && addgroup -S app && adduser -S app -G app && mkdir -p /data && chown app:app /data
 USER app
 
 COPY --from=build /out/backend /app/backend
 
+VOLUME ["/data"]
 EXPOSE 8080
 
 ENTRYPOINT ["/app/backend"]

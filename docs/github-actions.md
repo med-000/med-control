@@ -138,6 +138,8 @@ NOITON_OVERVIEW_DB_KEY
 ```
 
 Mattermost slash command token は、以下のどちらかで入れる。
+値は Mattermost の Slash Command 作成後に表示される `Token`。
+入れる場所は `production` environment の Secrets。
 
 共通 token:
 
