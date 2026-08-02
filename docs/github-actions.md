@@ -101,7 +101,7 @@ workflow_dispatch
 - deploy host に SSH
 - `DEPLOY_PATH` の clone 済み repo を `origin/main` に更新
 - GitHub Secrets / Variables から `.env` を生成してホストへ配置
-- ホスト上で `make test` と `docker compose config`
+- ホスト上で `docker compose config`
 - `docker compose up -d --build`
 
 ## GitHub Environment
@@ -206,7 +206,6 @@ deploy host には以下が必要。
 
 ```text
 git
-make
 docker
 docker compose
 scp/ssh
