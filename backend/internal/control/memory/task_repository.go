@@ -15,13 +15,25 @@ type TaskRepository struct {
 	tasks                map[string]taskdomain.Task
 	reminderOverrides    map[string]taskdomain.DateRange
 	sentNotificationKeys map[string]time.Time
+	notificationStore    NotificationStore
 }
 
-func NewTaskRepository() *TaskRepository {
+type NotificationStore interface {
+	IsNotificationSent(ctx context.Context, notificationKey string) (bool, error)
+	MarkNotificationSent(ctx context.Context, notificationKey string, task taskdomain.Task, sentAt time.Time) error
+}
+
+func NewTaskRepository(stores ...NotificationStore) *TaskRepository {
+	var notificationStore NotificationStore
+	if len(stores) > 0 {
+		notificationStore = stores[0]
+	}
+
 	return &TaskRepository{
 		tasks:                make(map[string]taskdomain.Task),
 		reminderOverrides:    make(map[string]taskdomain.DateRange),
 		sentNotificationKeys: make(map[string]time.Time),
+		notificationStore:    notificationStore,
 	}
 }
 
@@ -97,7 +109,11 @@ func (repository *TaskRepository) DueForNotification(ctx context.Context, now ti
 		if task.Notification.Start.After(now) {
 			continue
 		}
-		if _, sent := repository.sentNotificationKeys[notificationKey(task)]; sent {
+		sent, err := repository.isNotificationSent(ctx, task)
+		if err != nil {
+			return nil, err
+		}
+		if sent {
 			continue
 		}
 		result = append(result, task)
@@ -109,10 +125,30 @@ func (repository *TaskRepository) MarkNotificationSent(ctx context.Context, task
 	repository.mu.Lock()
 	defer repository.mu.Unlock()
 
-	repository.sentNotificationKeys[notificationKey(task)] = sentAt
+	if err := repository.markNotificationSent(ctx, task, sentAt); err != nil {
+		return err
+	}
 	if override, exists := repository.reminderOverrides[task.ID]; exists && sameNotificationStart(&override, task.Notification) {
 		delete(repository.reminderOverrides, task.ID)
 	}
+	return nil
+}
+
+func (repository *TaskRepository) isNotificationSent(ctx context.Context, task taskdomain.Task) (bool, error) {
+	key := notificationKey(task)
+	if repository.notificationStore != nil {
+		return repository.notificationStore.IsNotificationSent(ctx, key)
+	}
+	_, sent := repository.sentNotificationKeys[key]
+	return sent, nil
+}
+
+func (repository *TaskRepository) markNotificationSent(ctx context.Context, task taskdomain.Task, sentAt time.Time) error {
+	key := notificationKey(task)
+	if repository.notificationStore != nil {
+		return repository.notificationStore.MarkNotificationSent(ctx, key, task, sentAt)
+	}
+	repository.sentNotificationKeys[key] = sentAt
 	return nil
 }
 

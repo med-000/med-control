@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	taskdomain "github.com/med-000/overview/shared/domain/task"
@@ -99,6 +100,7 @@ func (service *Service) NotifyDueTasks(ctx context.Context, now time.Time) ([]ta
 		if err := service.repository.MarkNotificationSent(ctx, task, now); err != nil {
 			return nil, err
 		}
+		log.Printf("task notification sent: task_id=%s display_id=%s title=%q", task.ID, task.DisplayID, task.Title)
 	}
 
 	return tasks, nil

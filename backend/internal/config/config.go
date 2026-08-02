@@ -11,6 +11,7 @@ import (
 
 type Config struct {
 	Addr                      string
+	DBPath                    string
 	MattermostOverviewWebhook string
 	MattermostCommandToken    string
 	MattermostRemindToken     string
@@ -32,6 +33,7 @@ func Load() Config {
 
 	return Config{
 		Addr:                      addr,
+		DBPath:                    stringWithFallback(os.Getenv("BACKEND_DB_PATH"), "/data/overview.db"),
 		MattermostOverviewWebhook: os.Getenv("MATTERMOST_OVERVIEW_WEBHOOK"),
 		MattermostCommandToken:    os.Getenv("MATTERMOST_COMMAND_TOKEN"),
 		MattermostRemindToken:     firstNonEmpty(os.Getenv("MATTERMOST_REMIND_COMMAND_TOKEN"), os.Getenv("MATTERMOST_COMMAND_TOKEN")),
@@ -40,6 +42,13 @@ func Load() Config {
 		TaskNotifyInterval:        durationFromSeconds(os.Getenv("TASK_NOTIFY_INTERVAL_SECONDS"), 0),
 		HTTPTimeout:               durationFromSeconds(os.Getenv("HTTP_TIMEOUT_SECONDS"), 10*time.Second),
 	}
+}
+
+func stringWithFallback(value string, fallback string) string {
+	if value == "" {
+		return fallback
+	}
+	return value
 }
 
 func durationFromSeconds(value string, fallback time.Duration) time.Duration {

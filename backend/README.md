@@ -11,7 +11,8 @@
 - `POST /mattermost/commands/quick` で `/quick <title>` を受け、infra 経由で Notion task を作る
 - `TASK_NOTIFY_INTERVAL_SECONDS` を設定すると定期的に通知判定する
 
-現状の保存先は in-memory。再起動すると保持 task と通知済み状態は消える。
+現状の task 保存先は in-memory。再起動すると保持 task と `/remind` の一時通知時刻は消える。
+通知済み履歴は SQLite に保存するため、再起動後も同じ通知時刻の二重通知を避けられる。
 
 ## 構成
 
@@ -41,6 +42,7 @@ go run ./cmd/app
 
 ```env
 BACKEND_ADDR=:8080
+BACKEND_DB_PATH=/data/overview.db
 MATTERMOST_OVERVIEW_WEBHOOK=
 MATTERMOST_COMMAND_TOKEN=
 MATTERMOST_REMIND_COMMAND_TOKEN=
@@ -49,6 +51,9 @@ INFRA_QUICK_TASK_ENDPOINT=http://localhost:8090/tasks/quick
 TASK_NOTIFY_INTERVAL_SECONDS=60
 HTTP_TIMEOUT_SECONDS=10
 ```
+
+`BACKEND_DB_PATH` には通知済み履歴を保存する SQLite file を指定する。
+Docker Compose では `/data/overview.db` を named volume に保存する。
 
 `MATTERMOST_COMMAND_TOKEN` は `/remind` と `/quick` 共通 token として使える。
 Mattermost 側で command ごとに token が別になる場合は、`MATTERMOST_REMIND_COMMAND_TOKEN` と `MATTERMOST_QUICK_COMMAND_TOKEN` を使う。
