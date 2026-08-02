@@ -1,0 +1,26 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Package manager
+.pnp/
+.pnp.*
+
+# Build outputs
+dist/
+build/
+.next/
+.nuxt/
+.output/
+
+# Tooling cache
+.vite/
+.turbo/
+.parcel-cache/
+
+# Test coverage
+coverage/

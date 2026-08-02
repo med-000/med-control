@@ -1,0 +1,21 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Go
+bin/
+*.test
+*.out
+coverage.out
+
+# Build artifacts
+dist/
+build/
+
+# Local tools / cache
+.air.toml
+.cache/
+
+# Docker compose overrides
+docker-compose.override.yml
