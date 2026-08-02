@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/med-000/overview/infra/internal/app/tasksync"
 	"github.com/med-000/overview/infra/internal/config"
@@ -23,17 +26,22 @@ func main() {
 		exitWithError("BACKEND_TASKS_ENDPOINT is required")
 	}
 
-	notionClient := notioncontrol.NewClient(cfg.NotionAPIKey)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	notionClient := notioncontrol.NewClient(notioncontrol.ClientConfig{
+		APIKey:     cfg.NotionAPIKey,
+		BaseURL:    cfg.NotionAPIBaseURL,
+		APIVersion: cfg.NotionAPIVersion,
+		PageSize:   cfg.NotionPageSize,
+		Timeout:    cfg.HTTPTimeout,
+	})
 	taskSource := notioncontrol.NewTaskRepository(notionClient, cfg.NoitonOverviewDBKey)
-	taskDestination := backendcontrol.NewTaskSender(cfg.BackendTasksEndpoint)
+	taskDestination := backendcontrol.NewTaskSender(cfg.BackendTasksEndpoint, cfg.HTTPTimeout)
 	service := tasksync.NewService(taskSource, taskDestination)
 
-	tasks, err := service.SyncTasks(context.Background())
-	if err != nil {
-		exitWithError(err.Error())
-	}
-
-	fmt.Printf("sent %d tasks to backend\n", len(tasks))
+	log.Printf("notion sync worker started: interval=%s", cfg.NotionSyncInterval)
+	service.RunSyncLoop(ctx, cfg.NotionSyncInterval)
 }
 
 func exitWithError(message string) {

@@ -11,8 +11,8 @@ import (
 	apptask "github.com/med-000/overview/backend/internal/app/task"
 	"github.com/med-000/overview/backend/internal/config"
 	"github.com/med-000/overview/backend/internal/control/httpapi"
-	"github.com/med-000/overview/backend/internal/control/mattermost"
 	"github.com/med-000/overview/backend/internal/control/memory"
+	"github.com/med-000/overview/infra/mattermost"
 )
 
 func main() {
@@ -21,7 +21,7 @@ func main() {
 	defer stop()
 
 	taskRepository := memory.NewTaskRepository()
-	taskNotifier := mattermost.NewNotifier(cfg.MattermostWebhookURL)
+	taskNotifier := mattermost.NewNotifier(cfg.MattermostOverviewWebhook, cfg.HTTPTimeout)
 	taskService := apptask.NewService(taskRepository, taskNotifier)
 	go taskService.RunNotificationLoop(ctx, cfg.TaskNotifyInterval)
 

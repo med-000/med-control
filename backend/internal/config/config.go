@@ -10,9 +10,10 @@ import (
 )
 
 type Config struct {
-	Addr                 string
-	MattermostWebhookURL string
-	TaskNotifyInterval   time.Duration
+	Addr                      string
+	MattermostOverviewWebhook string
+	TaskNotifyInterval        time.Duration
+	HTTPTimeout               time.Duration
 }
 
 func Load() Config {
@@ -26,20 +27,21 @@ func Load() Config {
 	}
 
 	return Config{
-		Addr:                 addr,
-		MattermostWebhookURL: os.Getenv("MATTERMOST_WEBHOOK_URL"),
-		TaskNotifyInterval:   durationFromSeconds(os.Getenv("TASK_NOTIFY_INTERVAL_SECONDS")),
+		Addr:                      addr,
+		MattermostOverviewWebhook: os.Getenv("MATTERMOST_OVERVIEW_WEBHOOK"),
+		TaskNotifyInterval:        durationFromSeconds(os.Getenv("TASK_NOTIFY_INTERVAL_SECONDS"), 0),
+		HTTPTimeout:               durationFromSeconds(os.Getenv("HTTP_TIMEOUT_SECONDS"), 10*time.Second),
 	}
 }
 
-func durationFromSeconds(value string) time.Duration {
+func durationFromSeconds(value string, fallback time.Duration) time.Duration {
 	if value == "" {
-		return 0
+		return fallback
 	}
 
 	seconds, err := strconv.Atoi(value)
 	if err != nil || seconds <= 0 {
-		return 0
+		return fallback
 	}
 	return time.Duration(seconds) * time.Second
 }

@@ -20,7 +20,13 @@ func main() {
 		exitWithError("NOITON_OVERVIEW_DB_KEY is required")
 	}
 
-	notionClient := notioncontrol.NewClient(cfg.NotionAPIKey)
+	notionClient := notioncontrol.NewClient(notioncontrol.ClientConfig{
+		APIKey:     cfg.NotionAPIKey,
+		BaseURL:    cfg.NotionAPIBaseURL,
+		APIVersion: cfg.NotionAPIVersion,
+		PageSize:   cfg.NotionPageSize,
+		Timeout:    cfg.HTTPTimeout,
+	})
 	taskSource := notioncontrol.NewTaskRepository(notionClient, cfg.NoitonOverviewDBKey)
 	service := tasksync.NewService(taskSource, nil)
 

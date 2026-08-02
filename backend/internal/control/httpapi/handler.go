@@ -22,9 +22,16 @@ func NewHandler(taskService *apptask.Service) *Handler {
 }
 
 func (handler *Handler) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /health", handler.health)
 	mux.HandleFunc("POST /tasks/import", handler.importTasks)
 	mux.HandleFunc("GET /tasks", handler.listTasks)
 	mux.HandleFunc("POST /tasks/notify-due", handler.notifyDueTasks)
+}
+
+func (handler *Handler) health(writer http.ResponseWriter, request *http.Request) {
+	writeJSON(writer, http.StatusOK, map[string]string{
+		"status": "ok",
+	})
 }
 
 func (handler *Handler) importTasks(writer http.ResponseWriter, request *http.Request) {

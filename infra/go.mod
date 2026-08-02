@@ -1,6 +1,6 @@
 module github.com/med-000/overview/infra
 
-go 1.26.1
+go 1.25
 
 require github.com/med-000/overview/shared v0.0.0
 

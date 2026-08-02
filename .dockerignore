@@ -1,0 +1,28 @@
+.git/
+.DS_Store
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Local build outputs
+bin/
+build/
+dist/
+coverage/
+tmp/
+temp/
+
+# Frontend dependencies / build outputs
+frontend/node_modules/
+frontend/.next/
+frontend/.nuxt/
+frontend/.output/
+frontend/dist/
+frontend/build/
+
+# Go cache / test outputs
+**/*.test
+**/*.out
+**/coverage.out

@@ -17,11 +17,15 @@ type TaskSender struct {
 	httpClient *http.Client
 }
 
-func NewTaskSender(endpoint string) *TaskSender {
+func NewTaskSender(endpoint string, timeout time.Duration) *TaskSender {
+	if timeout <= 0 {
+		timeout = 10 * time.Second
+	}
+
 	return &TaskSender{
 		endpoint: endpoint,
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout: timeout,
 		},
 	}
 }

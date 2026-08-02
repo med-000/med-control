@@ -1,0 +1,66 @@
+name: overview-ci
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  go:
+    name: go check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache: true
+
+      - name: Test shared
+        working-directory: shared
+        run: go test ./...
+
+      - name: Test infra
+        working-directory: infra
+        run: go test ./...
+
+      - name: Test backend
+        working-directory: backend
+        run: go test ./...
+
+  docker:
+    name: docker check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare dummy env files
+        run: |
+          cp backend/.env.example backend/.env
+          cp infra/.env.example infra/.env
+
+      - name: Compose config
+        run: docker compose config
+
+      - name: Build images
+        run: docker compose build
+
+  no-env-files:
+    name: no env files committed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check committed env files
+        run: |
+          tracked_env_files="$(git ls-files | grep -E '(^|/)\.env(\..*)?$' | grep -v '\.env\.example$' || true)"
+          if [ -n "$tracked_env_files" ]; then
+            echo "Do not commit env files:"
+            echo "$tracked_env_files"
+            exit 1
+          fi
+
