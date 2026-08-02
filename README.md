@@ -30,7 +30,7 @@ make down         # Docker Compose 停止
 docker compose up --build
 ```
 
-`infra` service は 5 分ごとに Notion を読み取り、`backend` に task を同期する。
+`infra` service は 5 分ごとに Notion を読み取り、`backend` に task を同期する。host から backend を見る場合は `http://localhost:8085` を使う。
 
 ## CI/CD
 
