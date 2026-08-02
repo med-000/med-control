@@ -61,6 +61,7 @@ Mattermost 側で command ごとに token が別になる場合は、`MATTERMOST
 ## Mattermost Slash Commands
 
 Mattermost 側で2つ登録する。
+slash command の応答は Mattermost mobile でも見えるように `in_channel` で返す。
 
 ```text
 Trigger Word: remind

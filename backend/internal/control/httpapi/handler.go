@@ -162,7 +162,7 @@ func parseRemindText(text string) (string, int, error) {
 
 func writeMattermostResponse(writer http.ResponseWriter, status int, text string) {
 	writeJSON(writer, status, map[string]string{
-		"response_type": "ephemeral",
+		"response_type": "in_channel",
 		"text":          text,
 	})
 }
