@@ -30,15 +30,10 @@ jobs:
       DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
       DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
       DEPLOY_SSH_PORT: ${{ secrets.DEPLOY_SSH_PORT }}
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
-      BACKEND_ADDR: ${{ vars.BACKEND_ADDR }}
-      TASK_NOTIFY_INTERVAL_SECONDS: ${{ vars.TASK_NOTIFY_INTERVAL_SECONDS }}
-      HTTP_TIMEOUT_SECONDS: ${{ vars.HTTP_TIMEOUT_SECONDS }}
-      BACKEND_TASKS_ENDPOINT: ${{ vars.BACKEND_TASKS_ENDPOINT }}
       NOTION_SYNC_INTERVAL_SECONDS: ${{ vars.NOTION_SYNC_INTERVAL_SECONDS }}
-      NOTION_API_BASE_URL: ${{ vars.NOTION_API_BASE_URL }}
-      NOTION_API_VERSION: ${{ vars.NOTION_API_VERSION }}
-      NOTION_PAGE_SIZE: ${{ vars.NOTION_PAGE_SIZE }}
       MATTERMOST_OVERVIEW_WEBHOOK: ${{ secrets.MATTERMOST_OVERVIEW_WEBHOOK }}
       NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
       NOITON_OVERVIEW_DB_KEY: ${{ secrets.NOITON_OVERVIEW_DB_KEY }}
@@ -47,7 +42,7 @@ jobs:
 
       - name: Validate deploy environment
         run: |
-          required='DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_PRIVATE_KEY DEPLOY_PATH MATTERMOST_OVERVIEW_WEBHOOK NOTION_API_KEY NOITON_OVERVIEW_DB_KEY'
+          required='DEPLOY_HOST DEPLOY_USER DEPLOY_SSH_PRIVATE_KEY DEPLOY_PATH TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET MATTERMOST_OVERVIEW_WEBHOOK NOTION_API_KEY NOITON_OVERVIEW_DB_KEY'
           for name in $required; do
             value="$(printenv "$name" || true)"
             if [ -z "$value" ]; then
@@ -59,6 +54,13 @@ jobs:
       - name: Generate env files from GitHub values
         run: sh .github/scripts/write-env-files.sh
 
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:github-actions
+
       - name: Prepare SSH
         run: |
           mkdir -p ~/.ssh
@@ -67,17 +69,10 @@ jobs:
           chmod 600 ~/.ssh/overview_deploy_key
           ssh-keyscan -p "${DEPLOY_SSH_PORT:-22}" "$DEPLOY_HOST" >> ~/.ssh/known_hosts
 
-      - name: Sync source to host
+      - name: Update clone on host
         run: |
           port="${DEPLOY_SSH_PORT:-22}"
-          ssh -i ~/.ssh/overview_deploy_key -p "$port" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p '$DEPLOY_PATH'"
-          rsync -az --delete \
-            --exclude '.git/' \
-            --exclude 'backend/.env' \
-            --exclude 'infra/.env' \
-            --exclude 'frontend/.env' \
-            -e "ssh -i ~/.ssh/overview_deploy_key -p $port" \
-            ./ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
+          ssh -i ~/.ssh/overview_deploy_key -p "$port" "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && git fetch origin main && git reset --hard origin/main"
 
       - name: Write env files on host
         run: |
