@@ -1,0 +1,34 @@
+name: overview-env-check
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  env-check:
+    name: github env check
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      BACKEND_ADDR: ${{ vars.BACKEND_ADDR }}
+      TASK_NOTIFY_INTERVAL_SECONDS: ${{ vars.TASK_NOTIFY_INTERVAL_SECONDS }}
+      HTTP_TIMEOUT_SECONDS: ${{ vars.HTTP_TIMEOUT_SECONDS }}
+      BACKEND_TASKS_ENDPOINT: ${{ vars.BACKEND_TASKS_ENDPOINT }}
+      NOTION_SYNC_INTERVAL_SECONDS: ${{ vars.NOTION_SYNC_INTERVAL_SECONDS }}
+      NOTION_API_BASE_URL: ${{ vars.NOTION_API_BASE_URL }}
+      NOTION_API_VERSION: ${{ vars.NOTION_API_VERSION }}
+      NOTION_PAGE_SIZE: ${{ vars.NOTION_PAGE_SIZE }}
+      MATTERMOST_OVERVIEW_WEBHOOK: ${{ secrets.MATTERMOST_OVERVIEW_WEBHOOK }}
+      NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+      NOITON_OVERVIEW_DB_KEY: ${{ secrets.NOITON_OVERVIEW_DB_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate env files from GitHub values
+        run: sh .github/scripts/write-env-files.sh
+
+      - name: Validate compose with generated env files
+        run: docker compose config
+
