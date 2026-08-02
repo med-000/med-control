@@ -137,6 +137,21 @@ NOTION_API_KEY
 NOITON_OVERVIEW_DB_KEY
 ```
 
+Mattermost slash command token は、以下のどちらかで入れる。
+
+共通 token:
+
+```text
+MATTERMOST_COMMAND_TOKEN
+```
+
+command 別 token:
+
+```text
+MATTERMOST_REMIND_COMMAND_TOKEN
+MATTERMOST_QUICK_COMMAND_TOKEN
+```
+
 `DEPLOY_SSH_PORT` は通常 `22`。省略しても workflow 側で `22` として扱う。
 
 `DEPLOY_HOST` は Tailscale IP か MagicDNS hostname。

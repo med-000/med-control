@@ -35,6 +35,9 @@ jobs:
       DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
       NOTION_SYNC_INTERVAL_SECONDS: ${{ vars.NOTION_SYNC_INTERVAL_SECONDS }}
       MATTERMOST_OVERVIEW_WEBHOOK: ${{ secrets.MATTERMOST_OVERVIEW_WEBHOOK }}
+      MATTERMOST_COMMAND_TOKEN: ${{ secrets.MATTERMOST_COMMAND_TOKEN }}
+      MATTERMOST_REMIND_COMMAND_TOKEN: ${{ secrets.MATTERMOST_REMIND_COMMAND_TOKEN }}
+      MATTERMOST_QUICK_COMMAND_TOKEN: ${{ secrets.MATTERMOST_QUICK_COMMAND_TOKEN }}
       NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
       NOITON_OVERVIEW_DB_KEY: ${{ secrets.NOITON_OVERVIEW_DB_KEY }}
       NOTION_WEBHOOK_VERIFICATION_TOKEN: ${{ secrets.NOTION_WEBHOOK_VERIFICATION_TOKEN }}
@@ -51,6 +54,15 @@ jobs:
               exit 1
             fi
           done
+          if [ -z "${MATTERMOST_COMMAND_TOKEN:-}" ]; then
+            for name in MATTERMOST_REMIND_COMMAND_TOKEN MATTERMOST_QUICK_COMMAND_TOKEN; do
+              value="$(printenv "$name" || true)"
+              if [ -z "$value" ]; then
+                echo "missing required deploy value: $name or MATTERMOST_COMMAND_TOKEN" >&2
+                exit 1
+              fi
+            done
+          fi
 
       - name: Generate env files from GitHub values
         run: sh .github/scripts/write-env-files.sh

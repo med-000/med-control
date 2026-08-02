@@ -7,6 +7,8 @@
 - `POST /tasks/import` で task を取り込む
 - `GET /tasks` で保持中の task を返す
 - `POST /tasks/notify-due` で通知時刻を過ぎた task を Mattermost に通知する
+- `POST /mattermost/commands/remind` で `/remind <No> <minutes>` を受ける
+- `POST /mattermost/commands/quick` で `/quick <title>` を受け、infra 経由で Notion task を作る
 - `TASK_NOTIFY_INTERVAL_SECONDS` を設定すると定期的に通知判定する
 
 現状の保存先は in-memory。再起動すると保持 task と通知済み状態は消える。
@@ -40,6 +42,31 @@ go run ./cmd/app
 ```env
 BACKEND_ADDR=:8080
 MATTERMOST_OVERVIEW_WEBHOOK=
+MATTERMOST_COMMAND_TOKEN=
+MATTERMOST_REMIND_COMMAND_TOKEN=
+MATTERMOST_QUICK_COMMAND_TOKEN=
+INFRA_QUICK_TASK_ENDPOINT=http://localhost:8090/tasks/quick
 TASK_NOTIFY_INTERVAL_SECONDS=60
 HTTP_TIMEOUT_SECONDS=10
+```
+
+`MATTERMOST_COMMAND_TOKEN` は `/remind` と `/quick` 共通 token として使える。
+Mattermost 側で command ごとに token が別になる場合は、`MATTERMOST_REMIND_COMMAND_TOKEN` と `MATTERMOST_QUICK_COMMAND_TOKEN` を使う。
+
+## Mattermost Slash Commands
+
+Mattermost 側で2つ登録する。
+
+```text
+Trigger Word: remind
+Request URL: https://<backend-public-host>/mattermost/commands/remind
+Method: POST
+Usage: /remind <No> <minutes>
+```
+
+```text
+Trigger Word: quick
+Request URL: https://<backend-public-host>/mattermost/commands/quick
+Method: POST
+Usage: /quick <title>
 ```

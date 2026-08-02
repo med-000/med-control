@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/med-000/overview/infra/internal/app/tasksync"
+	taskdomain "github.com/med-000/overview/shared/domain/task"
 )
 
 type Handler struct {
@@ -29,12 +30,37 @@ func NewHandler(taskSync *tasksync.Service, webhookVerificationToken string) *Ha
 func (handler *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", handler.health)
 	mux.HandleFunc("POST /notion/webhook", handler.notionWebhook)
+	mux.HandleFunc("POST /tasks/quick", handler.quickTask)
 }
 
 func (handler *Handler) health(writer http.ResponseWriter, request *http.Request) {
 	writeJSON(writer, http.StatusOK, map[string]string{
 		"status": "ok",
 	})
+}
+
+func (handler *Handler) quickTask(writer http.ResponseWriter, request *http.Request) {
+	var command quickTaskRequest
+	if err := json.NewDecoder(request.Body).Decode(&command); err != nil {
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	title := strings.TrimSpace(command.Title)
+	if title == "" {
+		http.Error(writer, "title is required", http.StatusBadRequest)
+		return
+	}
+
+	task, err := handler.taskSync.CreateTask(request.Context(), taskdomain.CreateCommand{
+		Title: title,
+	})
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(writer, http.StatusCreated, task)
 }
 
 func (handler *Handler) notionWebhook(writer http.ResponseWriter, request *http.Request) {
@@ -125,6 +151,10 @@ type notionWebhookEvent struct {
 	ID                string              `json:"id"`
 	Type              string              `json:"type"`
 	Entity            notionWebhookEntity `json:"entity"`
+}
+
+type quickTaskRequest struct {
+	Title string `json:"title"`
 }
 
 type notionWebhookEntity struct {

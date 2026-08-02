@@ -7,6 +7,7 @@ services:
       - backend/.env
     environment:
       BACKEND_ADDR: ":8080"
+      INFRA_QUICK_TASK_ENDPOINT: "http://infra:8080/tasks/quick"
       HTTP_TIMEOUT_SECONDS: "10"
     ports:
       - "8085:8080"

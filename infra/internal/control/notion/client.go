@@ -72,6 +72,52 @@ func (client *Client) RetrieveDatabaseRows(ctx context.Context, databaseID strin
 	return client.QueryDataSource(ctx, dataSourceID)
 }
 
+func (client *Client) CreateDatabaseTask(ctx context.Context, databaseID string, title string) (map[string]any, error) {
+	database, err := client.RetrieveDatabase(ctx, databaseID)
+	if err != nil {
+		return nil, err
+	}
+
+	dataSourceID, err := firstDataSourceID(database)
+	if err != nil {
+		return nil, err
+	}
+
+	requestBody := map[string]any{
+		"parent": map[string]any{
+			"type":           "data_source_id",
+			"data_source_id": dataSourceID,
+		},
+		"properties": map[string]any{
+			OverviewTaskColumns.Title: map[string]any{
+				"type": "title",
+				"title": []map[string]any{
+					{
+						"type": "text",
+						"text": map[string]any{
+							"content": title,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	endpoint := fmt.Sprintf("%s/v1/pages", client.baseURL)
+	page, err := client.doJSON(ctx, http.MethodPost, endpoint, requestBody)
+	if err != nil {
+		return nil, err
+	}
+
+	description, err := client.RetrievePageMarkdown(ctx, stringValue(page["id"]))
+	if err != nil {
+		return nil, err
+	}
+	page["description"] = description
+
+	return page, nil
+}
+
 func (client *Client) RetrieveDatabaseTasks(ctx context.Context, databaseID string) ([]map[string]any, error) {
 	rows, err := client.RetrieveDatabaseRows(ctx, databaseID)
 	if err != nil {
