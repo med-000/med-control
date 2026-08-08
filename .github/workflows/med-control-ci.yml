@@ -47,7 +47,7 @@ jobs:
         run: docker compose config
 
       - name: Build images
-        run: docker compose build
+        run: docker compose build --pull
 
   no-env-files:
     name: no env files committed
@@ -63,4 +63,3 @@ jobs:
             echo "$tracked_env_files"
             exit 1
           fi
-
