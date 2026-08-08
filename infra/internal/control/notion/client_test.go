@@ -8,7 +8,7 @@ import (
 )
 
 func TestNotionDateProperty(t *testing.T) {
-	start := time.Date(2026, 8, 10, 9, 30, 0, 0, time.UTC)
+	start := time.Date(2026, 8, 10, 0, 30, 0, 0, time.UTC)
 
 	property := notionDateProperty(&taskdomain.DateRange{Start: &start})
 	date, ok := property["date"].(map[string]any)
@@ -16,8 +16,25 @@ func TestNotionDateProperty(t *testing.T) {
 		t.Fatalf("date property = %+v", property["date"])
 	}
 
-	if date["start"] != "2026-08-10T09:30:00Z" {
+	if date["start"] != "2026-08-10T09:30:00" {
 		t.Fatalf("start = %q", date["start"])
+	}
+	if date["time_zone"] != "Asia/Tokyo" {
+		t.Fatalf("time_zone = %q", date["time_zone"])
+	}
+}
+
+func TestNotionDatePropertyUsesExplicitTimeZone(t *testing.T) {
+	start := time.Date(2026, 8, 10, 0, 30, 0, 0, time.UTC)
+
+	property := notionDateProperty(&taskdomain.DateRange{Start: &start, TimeZone: "America/New_York"})
+	date := property["date"].(map[string]any)
+
+	if date["start"] != "2026-08-09T20:30:00" {
+		t.Fatalf("start = %q", date["start"])
+	}
+	if date["time_zone"] != "America/New_York" {
+		t.Fatalf("time_zone = %q", date["time_zone"])
 	}
 }
 
