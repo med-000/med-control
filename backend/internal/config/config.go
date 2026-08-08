@@ -16,6 +16,7 @@ type Config struct {
 	MattermostCommandToken string
 	MattermostRemindToken  string
 	MattermostQuickToken   string
+	MattermostCreateToken  string
 	InfraQuickTaskEndpoint string
 	TaskNotifyInterval     time.Duration
 	HTTPTimeout            time.Duration
@@ -38,6 +39,7 @@ func Load() Config {
 		MattermostCommandToken: os.Getenv("MATTERMOST_COMMAND_TOKEN"),
 		MattermostRemindToken:  firstNonEmpty(os.Getenv("MATTERMOST_REMIND_COMMAND_TOKEN"), os.Getenv("MATTERMOST_COMMAND_TOKEN")),
 		MattermostQuickToken:   firstNonEmpty(os.Getenv("MATTERMOST_QUICK_COMMAND_TOKEN"), os.Getenv("MATTERMOST_COMMAND_TOKEN")),
+		MattermostCreateToken:  firstNonEmpty(os.Getenv("MATTERMOST_CREATE_COMMAND_TOKEN"), os.Getenv("MATTERMOST_QUICK_COMMAND_TOKEN"), os.Getenv("MATTERMOST_COMMAND_TOKEN")),
 		InfraQuickTaskEndpoint: os.Getenv("INFRA_QUICK_TASK_ENDPOINT"),
 		TaskNotifyInterval:     durationFromSeconds(os.Getenv("TASK_NOTIFY_INTERVAL_SECONDS"), 0),
 		HTTPTimeout:            durationFromSeconds(os.Getenv("HTTP_TIMEOUT_SECONDS"), 10*time.Second),

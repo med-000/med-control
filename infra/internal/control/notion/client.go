@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
 
 type Client struct {
@@ -72,7 +74,7 @@ func (client *Client) RetrieveDatabaseRows(ctx context.Context, databaseID strin
 	return client.QueryDataSource(ctx, dataSourceID)
 }
 
-func (client *Client) CreateDatabaseTask(ctx context.Context, databaseID string, title string) (map[string]any, error) {
+func (client *Client) CreateDatabaseTask(ctx context.Context, databaseID string, command taskdomain.CreateCommand) (map[string]any, error) {
 	database, err := client.RetrieveDatabase(ctx, databaseID)
 	if err != nil {
 		return nil, err
@@ -83,24 +85,40 @@ func (client *Client) CreateDatabaseTask(ctx context.Context, databaseID string,
 		return nil, err
 	}
 
+	properties := map[string]any{
+		MedControlTaskColumns.Title: map[string]any{
+			"type": "title",
+			"title": []map[string]any{
+				{
+					"type": "text",
+					"text": map[string]any{
+						"content": command.Title,
+					},
+				},
+			},
+		},
+	}
+	if command.Date != nil && command.Date.Start != nil {
+		properties[MedControlTaskColumns.Date] = notionDateProperty(command.Date)
+	}
+	if command.Notification != nil && command.Notification.Start != nil {
+		properties[MedControlTaskColumns.Notification] = notionDateProperty(command.Notification)
+	}
+	if command.Priority != nil && command.Priority.Name != "" {
+		properties[MedControlTaskColumns.Priority] = map[string]any{
+			"type": "select",
+			"select": map[string]any{
+				"name": command.Priority.Name,
+			},
+		}
+	}
+
 	requestBody := map[string]any{
 		"parent": map[string]any{
 			"type":           "data_source_id",
 			"data_source_id": dataSourceID,
 		},
-		"properties": map[string]any{
-			MedControlTaskColumns.Title: map[string]any{
-				"type": "title",
-				"title": []map[string]any{
-					{
-						"type": "text",
-						"text": map[string]any{
-							"content": title,
-						},
-					},
-				},
-			},
-		},
+		"properties": properties,
 	}
 
 	endpoint := fmt.Sprintf("%s/v1/pages", client.baseURL)
@@ -116,6 +134,22 @@ func (client *Client) CreateDatabaseTask(ctx context.Context, databaseID string,
 	page["description"] = description
 
 	return page, nil
+}
+
+func notionDateProperty(value *taskdomain.DateRange) map[string]any {
+	date := map[string]any{
+		"start": value.Start.Format(time.RFC3339),
+	}
+	if value.End != nil {
+		date["end"] = value.End.Format(time.RFC3339)
+	}
+	if value.TimeZone != "" {
+		date["time_zone"] = value.TimeZone
+	}
+	return map[string]any{
+		"type": "date",
+		"date": date,
+	}
 }
 
 func (client *Client) RetrieveDatabaseTasks(ctx context.Context, databaseID string) ([]map[string]any, error) {

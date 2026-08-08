@@ -21,7 +21,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	taskRepository, err := sqlitecontrol.NewTaskRepository(cfg.DBPath)
+	taskRepository, err := sqlitecontrol.NewItemRepository(cfg.DBPath)
 	if err != nil {
 		exitWithError(fmt.Sprintf("open backend db failed: %v", err))
 	}
@@ -36,6 +36,7 @@ func main() {
 	handler := httpapi.NewHandler(taskService, httpapi.MattermostCommandTokens{
 		Remind: cfg.MattermostRemindToken,
 		Quick:  cfg.MattermostQuickToken,
+		Create: cfg.MattermostCreateToken,
 	})
 	handler.Register(mux)
 

@@ -32,7 +32,7 @@ func (repository *TaskRepository) FetchTasks(ctx context.Context) ([]taskdomain.
 }
 
 func (repository *TaskRepository) CreateTask(ctx context.Context, command taskdomain.CreateCommand) (taskdomain.Task, error) {
-	row, err := repository.client.CreateDatabaseTask(ctx, repository.databaseID, command.Title)
+	row, err := repository.client.CreateDatabaseTask(ctx, repository.databaseID, command)
 	if err != nil {
 		return taskdomain.Task{}, err
 	}

@@ -15,12 +15,12 @@ import (
 	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
 
-type TaskRepository struct {
+type ItemRepository struct {
 	mu   sync.RWMutex
 	path string
 }
 
-func NewTaskRepository(path string) (*TaskRepository, error) {
+func NewItemRepository(path string) (*ItemRepository, error) {
 	if path == "" {
 		path = "/data/med-control.db"
 	}
@@ -28,18 +28,18 @@ func NewTaskRepository(path string) (*TaskRepository, error) {
 		return nil, err
 	}
 
-	repository := &TaskRepository{path: path}
+	repository := &ItemRepository{path: path}
 	if err := repository.migrate(context.Background()); err != nil {
 		return nil, err
 	}
 	return repository, nil
 }
 
-func (repository *TaskRepository) Close() error {
+func (repository *ItemRepository) Close() error {
 	return nil
 }
 
-func (repository *TaskRepository) UpsertMany(ctx context.Context, tasks []taskdomain.Task) error {
+func (repository *ItemRepository) UpsertMany(ctx context.Context, tasks []taskdomain.Task) error {
 	if len(tasks) == 0 {
 		return nil
 	}
@@ -149,7 +149,7 @@ ON CONFLICT(notion_page_id) DO UPDATE SET
 	return repository.exec(ctx, sql.String())
 }
 
-func (repository *TaskRepository) List(ctx context.Context, filter taskdomain.Filter) ([]taskdomain.Task, error) {
+func (repository *ItemRepository) List(ctx context.Context, filter taskdomain.Filter) ([]taskdomain.Task, error) {
 	repository.mu.RLock()
 	defer repository.mu.RUnlock()
 
@@ -168,7 +168,7 @@ func (repository *TaskRepository) List(ctx context.Context, filter taskdomain.Fi
 	return result, nil
 }
 
-func (repository *TaskRepository) FindByDisplayID(ctx context.Context, displayID string) (taskdomain.Task, error) {
+func (repository *ItemRepository) FindByDisplayID(ctx context.Context, displayID string) (taskdomain.Task, error) {
 	tasks, err := repository.List(ctx, taskdomain.Filter{})
 	if err != nil {
 		return taskdomain.Task{}, err
@@ -181,7 +181,7 @@ func (repository *TaskRepository) FindByDisplayID(ctx context.Context, displayID
 	return taskdomain.Task{}, apptask.ErrTaskNotFound
 }
 
-func (repository *TaskRepository) ScheduleReminder(ctx context.Context, displayID string, remindAt time.Time) (taskdomain.Task, error) {
+func (repository *ItemRepository) ScheduleReminder(ctx context.Context, displayID string, remindAt time.Time) (taskdomain.Task, error) {
 	repository.mu.Lock()
 	defer repository.mu.Unlock()
 
@@ -220,7 +220,7 @@ ON CONFLICT(notion_page_id) DO UPDATE SET
 	return task, nil
 }
 
-func (repository *TaskRepository) DueForNotification(ctx context.Context, now time.Time) ([]taskdomain.Task, error) {
+func (repository *ItemRepository) DueForNotification(ctx context.Context, now time.Time) ([]taskdomain.Task, error) {
 	tasks, err := repository.List(ctx, taskdomain.Filter{})
 	if err != nil {
 		return nil, err
@@ -246,7 +246,7 @@ func (repository *TaskRepository) DueForNotification(ctx context.Context, now ti
 	return result, nil
 }
 
-func (repository *TaskRepository) MarkNotificationSent(ctx context.Context, task taskdomain.Task, sentAt time.Time) error {
+func (repository *ItemRepository) MarkNotificationSent(ctx context.Context, task taskdomain.Task, sentAt time.Time) error {
 	repository.mu.Lock()
 	defer repository.mu.Unlock()
 
@@ -286,7 +286,7 @@ COMMIT;
 	return repository.exec(ctx, sql)
 }
 
-func (repository *TaskRepository) migrate(ctx context.Context) error {
+func (repository *ItemRepository) migrate(ctx context.Context) error {
 	if err := repository.exec(ctx, `
 PRAGMA foreign_keys = ON;
 
@@ -366,7 +366,7 @@ CREATE INDEX IF NOT EXISTS idx_sent_notifications_sent_at
 	return repository.ensureSentNotificationsNotionPageID(ctx)
 }
 
-func (repository *TaskRepository) ensureSentNotificationsNotionPageID(ctx context.Context) error {
+func (repository *ItemRepository) ensureSentNotificationsNotionPageID(ctx context.Context) error {
 	output, err := repository.query(ctx, `PRAGMA table_info(sent_notifications);`)
 	if err != nil {
 		return err
@@ -383,7 +383,7 @@ func (repository *TaskRepository) ensureSentNotificationsNotionPageID(ctx contex
 	return repository.exec(ctx, `ALTER TABLE sent_notifications ADD COLUMN notion_page_id TEXT;`)
 }
 
-func (repository *TaskRepository) list(ctx context.Context) ([]taskdomain.Task, error) {
+func (repository *ItemRepository) list(ctx context.Context) ([]taskdomain.Task, error) {
 	output, err := repository.query(ctx, `
 SELECT
 	items.*,
@@ -420,7 +420,7 @@ ORDER BY items.display_id, items.title;
 	return tasks, nil
 }
 
-func (repository *TaskRepository) categories(ctx context.Context) (map[string][]taskdomain.SelectOption, error) {
+func (repository *ItemRepository) categories(ctx context.Context) (map[string][]taskdomain.SelectOption, error) {
 	output, err := repository.query(ctx, `
 SELECT notion_page_id, category_id, category_name, category_color
 FROM item_categories
@@ -448,7 +448,7 @@ ORDER BY notion_page_id, position;
 	return result, nil
 }
 
-func (repository *TaskRepository) findByDisplayIDLocked(ctx context.Context, displayID string) (taskdomain.Task, error) {
+func (repository *ItemRepository) findByDisplayIDLocked(ctx context.Context, displayID string) (taskdomain.Task, error) {
 	tasks, err := repository.list(ctx)
 	if err != nil {
 		return taskdomain.Task{}, err
@@ -461,7 +461,7 @@ func (repository *TaskRepository) findByDisplayIDLocked(ctx context.Context, dis
 	return taskdomain.Task{}, apptask.ErrTaskNotFound
 }
 
-func (repository *TaskRepository) isNotificationSent(ctx context.Context, task taskdomain.Task) (bool, error) {
+func (repository *ItemRepository) isNotificationSent(ctx context.Context, task taskdomain.Task) (bool, error) {
 	output, err := repository.query(ctx, fmt.Sprintf(
 		`SELECT notification_key FROM sent_notifications WHERE notification_key = %s LIMIT 1;`,
 		sqlString(taskdomain.NotificationKey(task)),
@@ -473,7 +473,7 @@ func (repository *TaskRepository) isNotificationSent(ctx context.Context, task t
 	return output != "" && output != "[]", nil
 }
 
-func (repository *TaskRepository) exec(ctx context.Context, sql string) error {
+func (repository *ItemRepository) exec(ctx context.Context, sql string) error {
 	command := exec.CommandContext(ctx, "sqlite3", "-bail", repository.path, sql)
 	output, err := command.CombinedOutput()
 	if err != nil {
@@ -482,7 +482,7 @@ func (repository *TaskRepository) exec(ctx context.Context, sql string) error {
 	return nil
 }
 
-func (repository *TaskRepository) query(ctx context.Context, sql string) (string, error) {
+func (repository *ItemRepository) query(ctx context.Context, sql string) (string, error) {
 	command := exec.CommandContext(ctx, "sqlite3", "-json", repository.path, sql)
 	output, err := command.CombinedOutput()
 	if err != nil {

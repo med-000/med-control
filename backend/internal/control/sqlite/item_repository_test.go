@@ -9,9 +9,9 @@ import (
 	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
 
-func TestTaskRepositoryPersistsItems(t *testing.T) {
+func TestItemRepositoryPersistsItems(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "med-control.db")
-	repository := newTestTaskRepository(t, path)
+	repository := newTestItemRepository(t, path)
 
 	notificationAt := time.Date(2026, 8, 9, 10, 0, 0, 0, time.UTC)
 	task := taskdomain.Task{
@@ -32,7 +32,7 @@ func TestTaskRepositoryPersistsItems(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reopened := newTestTaskRepository(t, path)
+	reopened := newTestItemRepository(t, path)
 	tasks, err := reopened.List(context.Background(), taskdomain.Filter{})
 	if err != nil {
 		t.Fatal(err)
@@ -52,9 +52,9 @@ func TestTaskRepositoryPersistsItems(t *testing.T) {
 	}
 }
 
-func TestTaskRepositoryPersistsReminderOverride(t *testing.T) {
+func TestItemRepositoryPersistsReminderOverride(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "med-control.db")
-	repository := newTestTaskRepository(t, path)
+	repository := newTestItemRepository(t, path)
 
 	originalNotification := time.Date(2026, 8, 9, 10, 0, 0, 0, time.UTC)
 	task := taskdomain.Task{
@@ -74,7 +74,7 @@ func TestTaskRepositoryPersistsReminderOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reopened := newTestTaskRepository(t, path)
+	reopened := newTestItemRepository(t, path)
 	got, err := reopened.FindByDisplayID(context.Background(), "7")
 	if err != nil {
 		t.Fatal(err)
@@ -84,9 +84,9 @@ func TestTaskRepositoryPersistsReminderOverride(t *testing.T) {
 	}
 }
 
-func TestTaskRepositorySkipsSentNotificationsAndClearsOverride(t *testing.T) {
+func TestItemRepositorySkipsSentNotificationsAndClearsOverride(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "med-control.db")
-	repository := newTestTaskRepository(t, path)
+	repository := newTestItemRepository(t, path)
 
 	now := time.Date(2026, 8, 9, 12, 0, 0, 0, time.UTC)
 	task := taskdomain.Task{
@@ -114,7 +114,7 @@ func TestTaskRepositorySkipsSentNotificationsAndClearsOverride(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reopened := newTestTaskRepository(t, path)
+	reopened := newTestItemRepository(t, path)
 	due, err = reopened.DueForNotification(context.Background(), now.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
@@ -132,9 +132,9 @@ func TestTaskRepositorySkipsSentNotificationsAndClearsOverride(t *testing.T) {
 	}
 }
 
-func newTestTaskRepository(t *testing.T, path string) *TaskRepository {
+func newTestItemRepository(t *testing.T, path string) *ItemRepository {
 	t.Helper()
-	repository, err := NewTaskRepository(path)
+	repository, err := NewItemRepository(path)
 	if err != nil {
 		t.Fatal(err)
 	}

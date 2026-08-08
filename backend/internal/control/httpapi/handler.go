@@ -2,11 +2,7 @@ package httpapi
 
 import (
 	"encoding/json"
-	"errors"
-	"fmt"
 	"net/http"
-	"strconv"
-	"strings"
 	"time"
 
 	apptask "github.com/med-000/med-control/backend/internal/app/task"
@@ -22,6 +18,7 @@ type Handler struct {
 type MattermostCommandTokens struct {
 	Remind string
 	Quick  string
+	Create string
 }
 
 func NewHandler(taskService *apptask.Service, tokens MattermostCommandTokens) *Handler {
@@ -39,6 +36,7 @@ func (handler *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /tasks/notify-due", handler.notifyDueTasks)
 	mux.HandleFunc("POST /mattermost/commands/remind", handler.remindCommand)
 	mux.HandleFunc("POST /mattermost/commands/quick", handler.quickCommand)
+	mux.HandleFunc("POST /mattermost/commands/create", handler.createCommand)
 }
 
 func (handler *Handler) health(writer http.ResponseWriter, request *http.Request) {
@@ -86,52 +84,6 @@ func (handler *Handler) notifyDueTasks(writer http.ResponseWriter, request *http
 	})
 }
 
-func (handler *Handler) remindCommand(writer http.ResponseWriter, request *http.Request) {
-	if !handler.validMattermostCommand(writer, request, handler.tokens.Remind) {
-		return
-	}
-
-	displayID, minutes, err := parseRemindText(request.FormValue("text"))
-	if err != nil {
-		writeMattermostResponse(writer, http.StatusOK, "usage: /remind <No> <minutes>")
-		return
-	}
-
-	task, err := handler.taskService.RemindTask(request.Context(), displayID, time.Duration(minutes)*time.Minute, handler.now())
-	if err != nil {
-		if errors.Is(err, apptask.ErrTaskNotFound) {
-			writeMattermostResponse(writer, http.StatusOK, fmt.Sprintf("No=%s の task が見つかりません", displayID))
-			return
-		}
-		writeMattermostResponse(writer, http.StatusOK, "remind の登録に失敗しました: "+err.Error())
-		return
-	}
-
-	writeMattermostResponse(writer, http.StatusOK, fmt.Sprintf("%s を %d 分後に再通知します", task.DisplayTitle(), minutes))
-}
-
-func (handler *Handler) quickCommand(writer http.ResponseWriter, request *http.Request) {
-	if !handler.validMattermostCommand(writer, request, handler.tokens.Quick) {
-		return
-	}
-
-	title := strings.TrimSpace(request.FormValue("text"))
-	if title == "" {
-		writeMattermostResponse(writer, http.StatusOK, "usage: /quick <title>")
-		return
-	}
-
-	task, err := handler.taskService.CreateTask(request.Context(), taskdomain.CreateCommand{
-		Title: title,
-	})
-	if err != nil {
-		writeMattermostResponse(writer, http.StatusOK, "quick task の作成に失敗しました: "+err.Error())
-		return
-	}
-
-	writeMattermostResponse(writer, http.StatusOK, "作成しました: "+task.DisplayTitle())
-}
-
 func (handler *Handler) validMattermostCommand(writer http.ResponseWriter, request *http.Request, token string) bool {
 	if err := request.ParseForm(); err != nil {
 		writeMattermostResponse(writer, http.StatusBadRequest, "request body is invalid")
@@ -144,20 +96,6 @@ func (handler *Handler) validMattermostCommand(writer http.ResponseWriter, reque
 	}
 
 	return true
-}
-
-func parseRemindText(text string) (string, int, error) {
-	fields := strings.Fields(text)
-	if len(fields) != 2 {
-		return "", 0, fmt.Errorf("invalid remind text")
-	}
-
-	minutes, err := strconv.Atoi(fields[1])
-	if err != nil || minutes <= 0 {
-		return "", 0, fmt.Errorf("invalid remind minutes")
-	}
-
-	return fields[0], minutes, nil
 }
 
 func writeMattermostResponse(writer http.ResponseWriter, status int, text string) {
