@@ -119,7 +119,7 @@ reload() {
 restart() {
   check
   compose restart
-  verify_containers "med-control restart" 0 0 med-control-backend-1 med-control-infra-1
+  verify_containers "med-control restart" 0 0 med-control-caddy med-control-backend-1 med-control-infra-1
 }
 
 recreate() {
@@ -127,7 +127,7 @@ recreate() {
   pull
   started_epoch="$(date -u +%s)"
   compose up -d --build --force-recreate --remove-orphans
-  verify_containers "med-control recreate" 1 "$started_epoch" med-control-backend-1 med-control-infra-1
+  verify_containers "med-control recreate" 1 "$started_epoch" med-control-caddy med-control-backend-1 med-control-infra-1
 }
 
 ps() {

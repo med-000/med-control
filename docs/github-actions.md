@@ -241,6 +241,20 @@ private key は GitHub Secret `SSH_PRIVATE_KEY` に入れる。
 Docker Compose の永続データは deploy host の `$DEPLOY_PATH/data/` に置く。
 `data/` は Git 追跡対象外。
 
+app 内 Caddy は `med-control-caddy` という container name で `med2-gateway` network に参加する。
+med2 側の `network/caddy/routes.yaml` では `upstream` に以下を指定する。
+
+```yaml
+upstream: med-control-caddy:8080
+```
+
+public path の振り分けは repo 内の `network/caddy/Caddyfile` が持つ。
+
+```text
+/mattermost/commands/* -> backend:8080
+/notion/webhook        -> infra:8080
+```
+
 ## deploy script
 
 Git 管理している deploy script は `bin/deploy-med-control`。

@@ -5,6 +5,7 @@ Notion と Mattermost を使ったカレンダー兼タスク管理の自動化�
 ## 構成
 
 ```text
+network/  app 内 gateway。外部入口を backend / infra に振り分ける
 backend/   アプリの中心。タスク保持、READ API、通知判定を担当
 infra/     外部サービス連携。Notion 取得、Mattermost webhook 実装を担当
 shared/    backend と infra で共有する domain 型
@@ -30,7 +31,9 @@ make down         # Docker Compose 停止
 docker compose up --build
 ```
 
-`infra` service は 5 分ごとに Notion を読み取り、Notion Webhook 受信時は該当 page を即時に取り直して `backend` に task を同期する。現在の Compose は host へ port を公開しない構成。host から直接確認する場合は、local 起動用の `.env.example` を使って `make backend` と `make infra` を別 port で起動する。
+`infra` service は 5 分ごとに Notion を読み取り、Notion Webhook 受信時は該当 page を即時に取り直して `backend` に task を同期する。host から直接確認する場合は、local 起動用の `.env.example` を使って `make backend` と `make infra` を別 port で起動する。
+
+Compose では app 内 Caddy だけを `med2-gateway` network に参加させる。med2 側の Caddy は `med-control-caddy:8080` に reverse proxy し、app 内 Caddy が `/mattermost/commands/*` を `backend`、`/notion/webhook` を `infra` に振り分ける。
 
 Docker Compose の永続データは repo 配下の `data/` に置く。`data/` は Git 追跡対象外。
 

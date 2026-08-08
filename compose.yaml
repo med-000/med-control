@@ -1,4 +1,18 @@
 services:
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: med-control-caddy
+    volumes:
+      - ./network/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      infra:
+        condition: service_started
+    networks:
+      - default
+      - gateway
+
   backend:
     build:
       context: .
@@ -36,3 +50,8 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+
+networks:
+  gateway:
+    name: med2-gateway
+    external: true
