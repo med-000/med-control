@@ -29,6 +29,7 @@ func NewHandler(taskSync *tasksync.Service, webhookVerificationToken string) *Ha
 
 func (handler *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", handler.health)
+	mux.HandleFunc("GET /notion/templates", handler.notionTemplates)
 	mux.HandleFunc("POST /notion/webhook", handler.notionWebhook)
 	mux.HandleFunc("POST /tasks/quick", handler.quickTask)
 }
@@ -60,6 +61,18 @@ func (handler *Handler) quickTask(writer http.ResponseWriter, request *http.Requ
 	}
 
 	writeJSON(writer, http.StatusCreated, task)
+}
+
+func (handler *Handler) notionTemplates(writer http.ResponseWriter, request *http.Request) {
+	templates, err := handler.taskSync.ListTemplates(request.Context())
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(writer, http.StatusOK, map[string]any{
+		"templates": templates,
+	})
 }
 
 func (handler *Handler) notionWebhook(writer http.ResponseWriter, request *http.Request) {

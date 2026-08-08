@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"testing"
+	"time"
 
 	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
@@ -38,5 +39,49 @@ func TestParseCreateTaskTextRejectsMissingFields(t *testing.T) {
 	_, err := parseCreateTaskText("title only", nil)
 	if err == nil {
 		t.Fatal("error should be returned")
+	}
+}
+
+func TestParseWorkText(t *testing.T) {
+	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
+	command, err := parseWorkText("start 0810 0811", now, "template-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if command.Title != "ollo勤務" {
+		t.Fatalf("Title = %q, want %q", command.Title, "ollo勤務")
+	}
+	if command.TemplateID != "template-id" {
+		t.Fatalf("TemplateID = %q, want template-id", command.TemplateID)
+	}
+	if command.Status == nil || command.Status.Name != "inprogress" {
+		t.Fatalf("Status = %+v", command.Status)
+	}
+	if command.Date == nil || command.Date.Start == nil || command.Date.End == nil {
+		t.Fatalf("Date = %+v", command.Date)
+	}
+	if command.Date.Start.Format("2006-01-02") != "2026-08-10" {
+		t.Fatalf("Date.Start = %s", command.Date.Start.Format("2006-01-02"))
+	}
+	if command.Date.End.Format("2006-01-02") != "2026-08-11" {
+		t.Fatalf("Date.End = %s", command.Date.End.Format("2006-01-02"))
+	}
+}
+
+func TestWorkStatusMapsInputs(t *testing.T) {
+	tests := map[string]string{
+		"start": "inprogress",
+		"end":   "done",
+		"todo":  "todo",
+	}
+	for input, want := range tests {
+		got, err := workStatus(input)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got.Name != want {
+			t.Fatalf("workStatus(%q) = %q, want %q", input, got.Name, want)
+		}
 	}
 }

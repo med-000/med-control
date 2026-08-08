@@ -37,7 +37,8 @@ func main() {
 		Remind: cfg.MattermostRemindToken,
 		Quick:  cfg.MattermostQuickToken,
 		Create: cfg.MattermostCreateToken,
-	})
+		Work:   cfg.MattermostWorkToken,
+	}, cfg.NotionWorkTemplateID)
 	handler.Register(mux)
 
 	fmt.Printf("backend listening on %s\n", cfg.Addr)

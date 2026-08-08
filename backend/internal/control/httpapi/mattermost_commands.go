@@ -47,6 +47,30 @@ func (handler *Handler) quickCommand(writer http.ResponseWriter, request *http.R
 	})
 }
 
+func (handler *Handler) workCommand(writer http.ResponseWriter, request *http.Request) {
+	if !handler.validMattermostCommand(writer, request, handler.tokens.Work) {
+		return
+	}
+	if handler.workTemplateID == "" {
+		writeMattermostResponse(writer, http.StatusOK, "NOTION_WORK_TEMPLATE_ID is required")
+		return
+	}
+
+	command, err := parseWorkText(request.FormValue("text"), handler.now(), handler.workTemplateID)
+	if err != nil {
+		writeMattermostResponse(writer, http.StatusOK, "usage: /work <start|end|todo> <start_mmdd> <end_mmdd>")
+		return
+	}
+
+	task, err := handler.taskService.CreateTask(request.Context(), command)
+	if err != nil {
+		writeMattermostResponse(writer, http.StatusOK, "work task の作成に失敗しました: "+err.Error())
+		return
+	}
+
+	writeMattermostResponse(writer, http.StatusOK, "作成しました: "+task.DisplayTitle())
+}
+
 func (handler *Handler) createTaskFromMattermostCommand(writer http.ResponseWriter, request *http.Request, token string, commandName string, priority *taskdomain.SelectOption) {
 	if !handler.validMattermostCommand(writer, request, token) {
 		return
@@ -65,6 +89,69 @@ func (handler *Handler) createTaskFromMattermostCommand(writer http.ResponseWrit
 	}
 
 	writeMattermostResponse(writer, http.StatusOK, "作成しました: "+task.DisplayTitle())
+}
+
+func parseWorkText(text string, now time.Time, templateID string) (taskdomain.CreateCommand, error) {
+	fields := strings.Fields(text)
+	if len(fields) != 3 {
+		return taskdomain.CreateCommand{}, fmt.Errorf("invalid work text")
+	}
+
+	status, err := workStatus(fields[0])
+	if err != nil {
+		return taskdomain.CreateCommand{}, err
+	}
+	start, err := parseMMDD(fields[1], now)
+	if err != nil {
+		return taskdomain.CreateCommand{}, err
+	}
+	end, err := parseMMDD(fields[2], now)
+	if err != nil {
+		return taskdomain.CreateCommand{}, err
+	}
+	if end.Before(start) {
+		return taskdomain.CreateCommand{}, fmt.Errorf("end date must not be before start date")
+	}
+
+	return taskdomain.CreateCommand{
+		Title:      "ollo勤務",
+		Status:     status,
+		Date:       &taskdomain.DateRange{Start: &start, End: &end},
+		TemplateID: templateID,
+	}, nil
+}
+
+func workStatus(value string) (*taskdomain.SelectOption, error) {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "start":
+		return &taskdomain.SelectOption{Name: "inprogress"}, nil
+	case "end":
+		return &taskdomain.SelectOption{Name: "done"}, nil
+	case "todo":
+		return &taskdomain.SelectOption{Name: "todo"}, nil
+	default:
+		return nil, fmt.Errorf("invalid work status: %s", value)
+	}
+}
+
+func parseMMDD(value string, now time.Time) (time.Time, error) {
+	if len(value) != 4 {
+		return time.Time{}, fmt.Errorf("invalid mmdd: %s", value)
+	}
+	month, err := strconv.Atoi(value[:2])
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid month: %s", value[:2])
+	}
+	day, err := strconv.Atoi(value[2:])
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid day: %s", value[2:])
+	}
+
+	result := time.Date(now.Year(), time.Month(month), day, 0, 0, 0, 0, time.Local)
+	if result.Month() != time.Month(month) || result.Day() != day {
+		return time.Time{}, fmt.Errorf("invalid mmdd: %s", value)
+	}
+	return result, nil
 }
 
 func parseRemindText(text string) (string, int, error) {

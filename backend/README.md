@@ -10,6 +10,7 @@
 - `POST /mattermost/commands/remind` で `/remind <No> <minutes>` を受ける
 - `POST /mattermost/commands/create` で `/create <title> <date> <notification>` を受け、infra 経由で Notion task を作る
 - `POST /mattermost/commands/quick` で `/quick <title> <date> <notification>` を受け、priority High の Notion task を作る
+- `POST /mattermost/commands/work` で `/work <start|end|todo> <start_mmdd> <end_mmdd>` を受け、Notion template 付きの勤務 item を作る
 - `TASK_NOTIFY_INTERVAL_SECONDS` を設定すると定期的に通知判定する
 
 task の local snapshot、`/remind` の一時通知時刻、通知済み履歴は SQLite に保存する。
@@ -53,7 +54,9 @@ MATTERMOST_COMMAND_TOKEN=
 MATTERMOST_REMIND_COMMAND_TOKEN=
 MATTERMOST_QUICK_COMMAND_TOKEN=
 MATTERMOST_CREATE_COMMAND_TOKEN=
+MATTERMOST_WORK_COMMAND_TOKEN=
 INFRA_QUICK_TASK_ENDPOINT=http://localhost:8090/tasks/quick
+NOTION_WORK_TEMPLATE_ID=
 TASK_NOTIFY_INTERVAL_SECONDS=60
 HTTP_TIMEOUT_SECONDS=10
 ```
@@ -63,12 +66,14 @@ Docker Compose では repo 配下の `data/backend/` を container の `/data` �
 `data/` は Git 追跡対象外。
 table 設計は `docs/database.md` を参照。
 
-`MATTERMOST_COMMAND_TOKEN` は `/remind`、`/create`、`/quick` 共通 token として使える。
-Mattermost 側で command ごとに token が別になる場合は、`MATTERMOST_REMIND_COMMAND_TOKEN`、`MATTERMOST_CREATE_COMMAND_TOKEN`、`MATTERMOST_QUICK_COMMAND_TOKEN` を使う。
+`MATTERMOST_COMMAND_TOKEN` は `/remind`、`/create`、`/quick`、`/work` 共通 token として使える。
+Mattermost 側で command ごとに token が別になる場合は、`MATTERMOST_REMIND_COMMAND_TOKEN`、`MATTERMOST_CREATE_COMMAND_TOKEN`、`MATTERMOST_QUICK_COMMAND_TOKEN`、`MATTERMOST_WORK_COMMAND_TOKEN` を使う。
+
+`NOTION_WORK_TEMPLATE_ID` には `ollo勤務` template の ID を入れる。
 
 ## Mattermost Slash Commands
 
-Mattermost 側で3つ登録する。
+Mattermost 側で4つ登録する。
 slash command の応答は Mattermost mobile でも見えるように `in_channel` で返す。
 
 ```text
@@ -92,5 +97,14 @@ Method: POST
 Usage: /quick <title> <date> <notification>
 ```
 
+```text
+Trigger Word: work
+Request URL: https://<backend-public-host>/mattermost/commands/work
+Method: POST
+Usage: /work <start|end|todo> <start_mmdd> <end_mmdd>
+```
+
 `date` は `2026-08-10`、`notification` は `09:30` または `2026-08-10T09:30` を受け付ける。
 `notification` が時刻だけの場合は `date` と同じ日として扱う。
+
+`/work` の `mmdd` は現在年として扱う。`start` は Notion status `inprogress`、`end` は `done`、`todo` は `todo` に変換する。

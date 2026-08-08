@@ -10,22 +10,25 @@ import (
 )
 
 type Handler struct {
-	taskService *apptask.Service
-	tokens      MattermostCommandTokens
-	now         func() time.Time
+	taskService    *apptask.Service
+	tokens         MattermostCommandTokens
+	workTemplateID string
+	now            func() time.Time
 }
 
 type MattermostCommandTokens struct {
 	Remind string
 	Quick  string
 	Create string
+	Work   string
 }
 
-func NewHandler(taskService *apptask.Service, tokens MattermostCommandTokens) *Handler {
+func NewHandler(taskService *apptask.Service, tokens MattermostCommandTokens, workTemplateID string) *Handler {
 	return &Handler{
-		taskService: taskService,
-		tokens:      tokens,
-		now:         time.Now,
+		taskService:    taskService,
+		tokens:         tokens,
+		workTemplateID: workTemplateID,
+		now:            time.Now,
 	}
 }
 
@@ -37,6 +40,7 @@ func (handler *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /mattermost/commands/remind", handler.remindCommand)
 	mux.HandleFunc("POST /mattermost/commands/quick", handler.quickCommand)
 	mux.HandleFunc("POST /mattermost/commands/create", handler.createCommand)
+	mux.HandleFunc("POST /mattermost/commands/work", handler.workCommand)
 }
 
 func (handler *Handler) health(writer http.ResponseWriter, request *http.Request) {
