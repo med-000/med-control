@@ -101,12 +101,11 @@ workflow_dispatch
 - deploy host に SSH
 - `DEPLOY_PATH` の clone 済み repo を `origin/main` に更新
 - GitHub Secrets の `BACKEND_ENV_FILE` と `INFRA_ENV_FILE` から `.env` を生成してホストへ配置
-- ホスト上で `docker compose config`
-- `docker compose up -d --build`
+- `sudo -n /usr/local/bin/deploy-med-control check` で構成確認
+- push または `apply=deploy` では `sudo -n /usr/local/bin/deploy-med-control recreate`
+- `apply=restart` では `sudo -n /usr/local/bin/deploy-med-control restart`
 
-## GitHub Environment
-
-`production` environment を使う。
+## GitHub Secrets
 
 場所:
 
@@ -115,15 +114,14 @@ Repository
 -> Settings
 -> Secrets and variables
 -> Actions
--> Environments
--> production
+-> Secrets
 ```
 
-Environment はディレクトリ単位ではなく、deploy 先や実行環境単位で使う。
+Environment は使わず、repository secrets / variables に置く。
 
 ## 必要な Secrets
 
-`production` environment の Secrets に入れる。
+Repository Secrets に入れる。
 
 ```text
 SSH_HOST
@@ -191,6 +189,7 @@ DEPLOY_PATH=/srv/med-control
 ```
 
 `DEPLOY_PATH` は必須。ホスト上の clone 済み repo の絶対パス。
+`bin/deploy-med-control` の `APP_DIR` と合わせるため、現在は `/srv/med-control` 固定。
 
 app 設定は GitHub Variables に分けず、ディレクトリ名に対応した `BACKEND_ENV_FILE` / `INFRA_ENV_FILE` の Secret にまとめる。
 `.env` の項目を増やす場合は `.env.example` と app config を更新し、対応する `*_ENV_FILE` の本文も更新する。
@@ -238,6 +237,43 @@ scp/ssh
 GitHub Actions 用の SSH public key を deploy user の `~/.ssh/authorized_keys` に入れておく。
 
 private key は GitHub Secret `SSH_PRIVATE_KEY` に入れる。
+
+Docker Compose の永続データは deploy host の `$DEPLOY_PATH/data/` に置く。
+`data/` は Git 追跡対象外。
+
+## deploy script
+
+Git 管理している deploy script は `bin/deploy-med-control`。
+これは server 上で直接その path を叩く実体ではなく、root owned script として `/usr/local/bin/deploy-med-control` に配置するための元ファイル。
+
+server 側への配置:
+
+```sh
+sudo install -o root -g root -m 755 /srv/med-control/bin/deploy-med-control /usr/local/bin/deploy-med-control
+```
+
+deploy user に `docker group` や `sudo ALL` は渡さない。
+Docker 操作は `/usr/local/bin/deploy-med-control` の固定 action だけに閉じ込める。
+
+sudoers は `visudo` で作る。
+
+```sh
+sudo visudo -f /etc/sudoers.d/deploy-med-control
+```
+
+中身:
+
+```sudoers
+<deploy-user> ALL=(root) NOPASSWD: /usr/local/bin/deploy-med-control check
+<deploy-user> ALL=(root) NOPASSWD: /usr/local/bin/deploy-med-control pull
+<deploy-user> ALL=(root) NOPASSWD: /usr/local/bin/deploy-med-control reload
+<deploy-user> ALL=(root) NOPASSWD: /usr/local/bin/deploy-med-control restart
+<deploy-user> ALL=(root) NOPASSWD: /usr/local/bin/deploy-med-control recreate
+<deploy-user> ALL=(root) NOPASSWD: /usr/local/bin/deploy-med-control ps
+```
+
+workflow は host 上の repo と `.env` を更新した後、この script を `sudo -n` で呼ぶ。
+`sudo -n` は password prompt を出さないため、sudoers 設定が足りない場合は CI/CD 上で即失敗する。
 
 ## 注意
 

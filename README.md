@@ -32,12 +32,14 @@ docker compose up --build
 
 `infra` service は 5 分ごとに Notion を読み取り、Notion Webhook 受信時は該当 page を即時に取り直して `backend` に task を同期する。現在の Compose は host へ port を公開しない構成。host から直接確認する場合は、local 起動用の `.env.example` を使って `make backend` と `make infra` を別 port で起動する。
 
+Docker Compose の永続データは repo 配下の `data/` に置く。`data/` は Git 追跡対象外。
+
 ## CI/CD
 
 GitHub Actions は `.github/workflows` に定義している。
 
 - `med-control-ci`: Go / Docker / `.env` commit 防止の CI
 - `med-control-env-check`: GitHub Secrets から `.env` を生成できるか確認
-- `med-control-deploy`: ホストへ rsync し、`.env` を生成して Docker Compose で deploy
+- `med-control-deploy`: ホスト上の repo を更新し、`.env` を生成して deploy script 経由で反映
 
 詳細は `docs/github-actions.md` を参照。

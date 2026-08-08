@@ -15,6 +15,9 @@ Thumbs.db
 *.log
 logs/
 
+# Local Docker data
+data/
+
 # Temporary files
 tmp/
 temp/

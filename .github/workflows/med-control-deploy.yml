@@ -17,14 +17,13 @@ on:
       - main
 
 concurrency:
-  group: med-control-deploy-production
+  group: med-control-deploy
   cancel-in-progress: false
 
 jobs:
   deploy:
     name: deploy
     runs-on: ubuntu-latest
-    environment: production
     env:
       SSH_HOST: ${{ secrets.SSH_HOST }}
       SSH_USER: ${{ secrets.SSH_USER }}
@@ -48,6 +47,10 @@ jobs:
               exit 1
             fi
           done
+          if [ "$DEPLOY_PATH" != "/srv/med-control" ]; then
+            echo "DEPLOY_PATH must match bin/deploy-med-control APP_DIR: /srv/med-control" >&2
+            exit 1
+          fi
 
       - name: Generate env files from GitHub values
         run: sh .github/scripts/write-env-files.sh
@@ -82,16 +85,16 @@ jobs:
       - name: Check on host
         run: |
           port="${SSH_PORT:-22}"
-          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "cd '$DEPLOY_PATH' && docker compose config"
+          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "sudo -n /usr/local/bin/deploy-med-control check"
 
       - name: Apply deploy
         if: ${{ github.event_name == 'push' || inputs.apply == 'deploy' }}
         run: |
           port="${SSH_PORT:-22}"
-          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "cd '$DEPLOY_PATH' && docker compose up -d --build"
+          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "sudo -n /usr/local/bin/deploy-med-control recreate"
 
       - name: Restart services
         if: ${{ inputs.apply == 'restart' }}
         run: |
           port="${SSH_PORT:-22}"
-          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "cd '$DEPLOY_PATH' && docker compose restart"
+          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "sudo -n /usr/local/bin/deploy-med-control restart"

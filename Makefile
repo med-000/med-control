@@ -41,8 +41,12 @@ test:
 docker-build:
 	docker compose build
 
+.PHONY: prepare-data
+prepare-data:
+	mkdir -p data/backend
+
 .PHONY: up
-up:
+up: prepare-data
 	docker compose up --build
 
 .PHONY: down

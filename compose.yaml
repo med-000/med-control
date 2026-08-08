@@ -10,8 +10,9 @@ services:
       BACKEND_DB_PATH: "/data/med-control.db"
       INFRA_QUICK_TASK_ENDPOINT: "http://infra:8080/tasks/quick"
       HTTP_TIMEOUT_SECONDS: "10"
+    user: "${MED_CONTROL_UID:-1000}:${MED_CONTROL_GID:-1000}"
     volumes:
-      - backend_data:/data
+      - ./data/backend:/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 10s
@@ -35,6 +36,3 @@ services:
     depends_on:
       backend:
         condition: service_healthy
-
-volumes:
-  backend_data:
