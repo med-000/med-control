@@ -42,8 +42,8 @@ go run ./cmd/app
 
 ```env
 BACKEND_ADDR=:8080
-BACKEND_DB_PATH=/data/overview.db
-MATTERMOST_OVERVIEW_WEBHOOK=
+BACKEND_DB_PATH=/data/med-control.db
+MATTERMOST_MED_CONTROL_WEBHOOK=
 MATTERMOST_COMMAND_TOKEN=
 MATTERMOST_REMIND_COMMAND_TOKEN=
 MATTERMOST_QUICK_COMMAND_TOKEN=
@@ -53,7 +53,7 @@ HTTP_TIMEOUT_SECONDS=10
 ```
 
 `BACKEND_DB_PATH` には通知済み履歴を保存する SQLite file を指定する。
-Docker Compose では `/data/overview.db` を named volume に保存する。
+Docker Compose では `/data/med-control.db` を named volume に保存する。
 
 `MATTERMOST_COMMAND_TOKEN` は `/remind` と `/quick` 共通 token として使える。
 Mattermost 側で command ごとに token が別になる場合は、`MATTERMOST_REMIND_COMMAND_TOKEN` と `MATTERMOST_QUICK_COMMAND_TOKEN` を使う。

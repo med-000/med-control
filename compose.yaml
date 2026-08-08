@@ -7,11 +7,9 @@ services:
       - backend/.env
     environment:
       BACKEND_ADDR: ":8080"
-      BACKEND_DB_PATH: "/data/overview.db"
+      BACKEND_DB_PATH: "/data/med-control.db"
       INFRA_QUICK_TASK_ENDPOINT: "http://infra:8080/tasks/quick"
       HTTP_TIMEOUT_SECONDS: "10"
-    ports:
-      - "8085:8080"
     volumes:
       - backend_data:/data
     healthcheck:
@@ -34,8 +32,6 @@ services:
       NOTION_API_VERSION: "2026-03-11"
       NOTION_PAGE_SIZE: "100"
       HTTP_TIMEOUT_SECONDS: "10"
-    ports:
-      - "8090:8080"
     depends_on:
       backend:
         condition: service_healthy

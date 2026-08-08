@@ -1,4 +1,4 @@
-# overview
+# med-control
 
 Notion と Mattermost を使ったカレンダー兼タスク管理の自動化・通知アプリ。
 
@@ -30,14 +30,14 @@ make down         # Docker Compose 停止
 docker compose up --build
 ```
 
-`infra` service は 5 分ごとに Notion を読み取り、Notion Webhook 受信時は該当 page を即時に取り直して `backend` に task を同期する。host から backend を見る場合は `http://localhost:8085`、infra webhook を見る場合は `http://localhost:8090` を使う。
+`infra` service は 5 分ごとに Notion を読み取り、Notion Webhook 受信時は該当 page を即時に取り直して `backend` に task を同期する。現在の Compose は host へ port を公開しない構成。host から直接確認する場合は、local 起動用の `.env.example` を使って `make backend` と `make infra` を別 port で起動する。
 
 ## CI/CD
 
 GitHub Actions は `.github/workflows` に定義している。
 
-- `overview-ci`: Go / Docker / `.env` commit 防止の CI
-- `overview-env-check`: GitHub Secrets/Variables から `.env` を生成できるか確認
-- `overview-deploy`: ホストへ rsync し、`.env` を生成して Docker Compose で deploy
+- `med-control-ci`: Go / Docker / `.env` commit 防止の CI
+- `med-control-env-check`: GitHub Secrets から `.env` を生成できるか確認
+- `med-control-deploy`: ホストへ rsync し、`.env` を生成して Docker Compose で deploy
 
 詳細は `docs/github-actions.md` を参照。

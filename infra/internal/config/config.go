@@ -11,7 +11,7 @@ import (
 
 type Config struct {
 	NotionAPIKey                   string
-	NoitonOverviewDBKey            string
+	NotionDatabaseID               string
 	BackendTasksEndpoint           string
 	NotionSyncInterval             time.Duration
 	NotionWebhookAddr              string
@@ -28,11 +28,8 @@ func Load() Config {
 	_ = loadEnvFile("../../.env")
 
 	return Config{
-		NotionAPIKey: os.Getenv("NOTION_API_KEY"),
-		NoitonOverviewDBKey: firstNonEmpty(
-			os.Getenv("NOITON_OVERVIEW_DB_KEY"),
-			os.Getenv("NOTION_OVERVIEW_DB_KEY"),
-		),
+		NotionAPIKey:                   os.Getenv("NOTION_API_KEY"),
+		NotionDatabaseID:               os.Getenv("NOTION_MED_CONTROL_DB_KEY"),
 		BackendTasksEndpoint:           os.Getenv("BACKEND_TASKS_ENDPOINT"),
 		NotionSyncInterval:             durationFromSeconds(os.Getenv("NOTION_SYNC_INTERVAL_SECONDS"), 5*time.Minute),
 		NotionWebhookAddr:              stringWithFallback(os.Getenv("NOTION_WEBHOOK_ADDR"), ":8080"),

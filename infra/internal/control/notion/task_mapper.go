@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	taskdomain "github.com/med-000/overview/shared/domain/task"
+	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
 
 func RowsToTasks(rows []map[string]any) []taskdomain.Task {
@@ -22,14 +22,14 @@ func RowToTask(row map[string]any) taskdomain.Task {
 
 	return taskdomain.Task{
 		ID:           fmt.Sprintf("%s:%s", taskdomain.SourceNotion, id),
-		DisplayID:    uniqueIDProperty(properties[OverviewTaskColumns.DisplayID]),
-		Title:        firstNonEmptyString(titleProperty(properties[OverviewTaskColumns.Title]), "Untitled"),
-		Status:       selectLikeOption(properties[OverviewTaskColumns.Status]),
-		Date:         dateProperty(properties[OverviewTaskColumns.Date]),
-		Categories:   multiSelectOptions(properties[OverviewTaskColumns.Category]),
-		Label:        selectLikeOption(properties[OverviewTaskColumns.Label]),
-		Priority:     selectLikeOption(properties[OverviewTaskColumns.Priority]),
-		Notification: dateProperty(properties[OverviewTaskColumns.Notification]),
+		DisplayID:    uniqueIDProperty(properties[MedControlTaskColumns.DisplayID]),
+		Title:        firstNonEmptyString(titleProperty(properties[MedControlTaskColumns.Title]), "Untitled"),
+		Status:       selectLikeOption(properties[MedControlTaskColumns.Status]),
+		Date:         dateProperty(properties[MedControlTaskColumns.Date]),
+		Categories:   multiSelectOptions(properties[MedControlTaskColumns.Category]),
+		Label:        selectLikeOption(properties[MedControlTaskColumns.Label]),
+		Priority:     selectLikeOption(properties[MedControlTaskColumns.Priority]),
+		Notification: dateProperty(properties[MedControlTaskColumns.Notification]),
 		Source:       taskdomain.SourceNotion,
 		SourceID:     id,
 		SourceURL:    stringValue(row["url"]),

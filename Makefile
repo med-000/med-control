@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-GO_CACHE ?= /tmp/overview-go-build-cache
+GO_CACHE ?= /tmp/med-control-go-build-cache
 GO_ENV := GOCACHE=$(GO_CACHE)
 
 .PHONY: help

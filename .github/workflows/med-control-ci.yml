@@ -1,4 +1,4 @@
-name: overview-ci
+name: med-control-ci
 
 on:
   push:

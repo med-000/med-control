@@ -8,13 +8,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	apptask "github.com/med-000/overview/backend/internal/app/task"
-	"github.com/med-000/overview/backend/internal/config"
-	"github.com/med-000/overview/backend/internal/control/httpapi"
-	infracontrol "github.com/med-000/overview/backend/internal/control/infra"
-	"github.com/med-000/overview/backend/internal/control/memory"
-	sqlitecontrol "github.com/med-000/overview/backend/internal/control/sqlite"
-	"github.com/med-000/overview/infra/mattermost"
+	apptask "github.com/med-000/med-control/backend/internal/app/task"
+	"github.com/med-000/med-control/backend/internal/config"
+	"github.com/med-000/med-control/backend/internal/control/httpapi"
+	infracontrol "github.com/med-000/med-control/backend/internal/control/infra"
+	"github.com/med-000/med-control/backend/internal/control/memory"
+	sqlitecontrol "github.com/med-000/med-control/backend/internal/control/sqlite"
+	"github.com/med-000/med-control/infra/mattermost"
 )
 
 func main() {
@@ -29,7 +29,7 @@ func main() {
 	defer notificationStore.Close()
 
 	taskRepository := memory.NewTaskRepository(notificationStore)
-	taskNotifier := mattermost.NewNotifier(cfg.MattermostOverviewWebhook, cfg.HTTPTimeout)
+	taskNotifier := mattermost.NewNotifier(cfg.MattermostWebhook, cfg.HTTPTimeout)
 	taskCreator := infracontrol.NewTaskCreator(cfg.InfraQuickTaskEndpoint, cfg.HTTPTimeout)
 	taskService := apptask.NewService(taskRepository, taskNotifier, taskCreator)
 	go taskService.RunNotificationLoop(ctx, cfg.TaskNotifyInterval)

@@ -1,0 +1,97 @@
+name: med-control-deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Deployment action"
+        required: true
+        type: choice
+        default: "check"
+        options:
+          - check
+          - deploy
+          - restart
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: med-control-deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SSH_HOST: ${{ secrets.SSH_HOST }}
+      SSH_USER: ${{ secrets.SSH_USER }}
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_PORT: ${{ secrets.SSH_PORT }}
+      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+      TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
+      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
+      BACKEND_ENV_FILE: ${{ secrets.BACKEND_ENV_FILE }}
+      INFRA_ENV_FILE: ${{ secrets.INFRA_ENV_FILE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate deploy environment
+        run: |
+          required='SSH_HOST SSH_USER SSH_PRIVATE_KEY DEPLOY_PATH TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET BACKEND_ENV_FILE INFRA_ENV_FILE'
+          for name in $required; do
+            value="$(printenv "$name" || true)"
+            if [ -z "$value" ]; then
+              echo "missing required deploy value: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Generate env files from GitHub values
+        run: sh .github/scripts/write-env-files.sh
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:github-actions
+
+      - name: Prepare SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/med-control_deploy_key
+          chmod 600 ~/.ssh/med-control_deploy_key
+          ssh-keyscan -p "${SSH_PORT:-22}" "$SSH_HOST" >> ~/.ssh/known_hosts
+
+      - name: Update clone on host
+        run: |
+          port="${SSH_PORT:-22}"
+          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "cd '$DEPLOY_PATH' && git fetch origin main && git reset --hard origin/main"
+
+      - name: Write env files on host
+        run: |
+          port="${SSH_PORT:-22}"
+          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "cd '$DEPLOY_PATH' && mkdir -p backend infra"
+          scp -i ~/.ssh/med-control_deploy_key -P "$port" backend/.env "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/backend/.env"
+          scp -i ~/.ssh/med-control_deploy_key -P "$port" infra/.env "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/infra/.env"
+
+      - name: Check on host
+        run: |
+          port="${SSH_PORT:-22}"
+          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "cd '$DEPLOY_PATH' && docker compose config"
+
+      - name: Apply deploy
+        if: ${{ github.event_name == 'push' || inputs.apply == 'deploy' }}
+        run: |
+          port="${SSH_PORT:-22}"
+          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "cd '$DEPLOY_PATH' && docker compose up -d --build"
+
+      - name: Restart services
+        if: ${{ inputs.apply == 'restart' }}
+        run: |
+          port="${SSH_PORT:-22}"
+          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "cd '$DEPLOY_PATH' && docker compose restart"

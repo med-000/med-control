@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	taskdomain "github.com/med-000/overview/shared/domain/task"
+	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
 
 type Notifier struct {
@@ -33,7 +33,7 @@ func NewNotifier(webhookURL string, timeout time.Duration) *Notifier {
 
 func (notifier *Notifier) SendTaskNotification(ctx context.Context, task taskdomain.Task) error {
 	if notifier.webhookURL == "" {
-		return fmt.Errorf("MATTERMOST_OVERVIEW_WEBHOOK is required")
+		return fmt.Errorf("mattermost webhook URL is required")
 	}
 
 	body, err := json.Marshal(map[string]string{

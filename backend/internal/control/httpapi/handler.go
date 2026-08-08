@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	apptask "github.com/med-000/overview/backend/internal/app/task"
-	taskdomain "github.com/med-000/overview/shared/domain/task"
+	apptask "github.com/med-000/med-control/backend/internal/app/task"
+	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
 
 type Handler struct {

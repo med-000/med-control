@@ -10,15 +10,15 @@ import (
 )
 
 type Config struct {
-	Addr                      string
-	DBPath                    string
-	MattermostOverviewWebhook string
-	MattermostCommandToken    string
-	MattermostRemindToken     string
-	MattermostQuickToken      string
-	InfraQuickTaskEndpoint    string
-	TaskNotifyInterval        time.Duration
-	HTTPTimeout               time.Duration
+	Addr                   string
+	DBPath                 string
+	MattermostWebhook      string
+	MattermostCommandToken string
+	MattermostRemindToken  string
+	MattermostQuickToken   string
+	InfraQuickTaskEndpoint string
+	TaskNotifyInterval     time.Duration
+	HTTPTimeout            time.Duration
 }
 
 func Load() Config {
@@ -32,15 +32,15 @@ func Load() Config {
 	}
 
 	return Config{
-		Addr:                      addr,
-		DBPath:                    stringWithFallback(os.Getenv("BACKEND_DB_PATH"), "/data/overview.db"),
-		MattermostOverviewWebhook: os.Getenv("MATTERMOST_OVERVIEW_WEBHOOK"),
-		MattermostCommandToken:    os.Getenv("MATTERMOST_COMMAND_TOKEN"),
-		MattermostRemindToken:     firstNonEmpty(os.Getenv("MATTERMOST_REMIND_COMMAND_TOKEN"), os.Getenv("MATTERMOST_COMMAND_TOKEN")),
-		MattermostQuickToken:      firstNonEmpty(os.Getenv("MATTERMOST_QUICK_COMMAND_TOKEN"), os.Getenv("MATTERMOST_COMMAND_TOKEN")),
-		InfraQuickTaskEndpoint:    os.Getenv("INFRA_QUICK_TASK_ENDPOINT"),
-		TaskNotifyInterval:        durationFromSeconds(os.Getenv("TASK_NOTIFY_INTERVAL_SECONDS"), 0),
-		HTTPTimeout:               durationFromSeconds(os.Getenv("HTTP_TIMEOUT_SECONDS"), 10*time.Second),
+		Addr:                   addr,
+		DBPath:                 stringWithFallback(os.Getenv("BACKEND_DB_PATH"), "/data/med-control.db"),
+		MattermostWebhook:      os.Getenv("MATTERMOST_MED_CONTROL_WEBHOOK"),
+		MattermostCommandToken: os.Getenv("MATTERMOST_COMMAND_TOKEN"),
+		MattermostRemindToken:  firstNonEmpty(os.Getenv("MATTERMOST_REMIND_COMMAND_TOKEN"), os.Getenv("MATTERMOST_COMMAND_TOKEN")),
+		MattermostQuickToken:   firstNonEmpty(os.Getenv("MATTERMOST_QUICK_COMMAND_TOKEN"), os.Getenv("MATTERMOST_COMMAND_TOKEN")),
+		InfraQuickTaskEndpoint: os.Getenv("INFRA_QUICK_TASK_ENDPOINT"),
+		TaskNotifyInterval:     durationFromSeconds(os.Getenv("TASK_NOTIFY_INTERVAL_SECONDS"), 0),
+		HTTPTimeout:            durationFromSeconds(os.Getenv("HTTP_TIMEOUT_SECONDS"), 10*time.Second),
 	}
 }
 
