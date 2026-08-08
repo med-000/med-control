@@ -8,8 +8,8 @@
 - `GET /tasks` で保持中の task を返す
 - `POST /tasks/notify-due` で通知時刻を過ぎた task を Mattermost に通知する
 - `POST /mattermost/commands/remind` で `/remind <No> <minutes>` を受ける
-- `POST /mattermost/commands/create` で `/create <title> <date> <notification>` を受け、infra 経由で Notion task を作る
-- `POST /mattermost/commands/quick` で `/quick <title> <date> <notification>` を受け、priority High の Notion task を作る
+- `POST /mattermost/commands/create` で `/create <title> <date_mmddhhmm> <notification_mmddhhmm>` を受け、infra 経由で Notion task を作る
+- `POST /mattermost/commands/quick` で `/quick <title> <date_mmddhhmm> <notification_mmddhhmm>` を受け、priority High の Notion task を作る
 - `POST /mattermost/commands/work` で `/work <start|end|todo> <start_mmddhhmm> <end_mmddhhmm>` を受け、Notion template 付きの勤務 item を作る
 - `TASK_NOTIFY_INTERVAL_SECONDS` を設定すると定期的に通知判定する
 
@@ -89,14 +89,14 @@ Usage: /remind <No> <minutes>
 Trigger Word: create
 Request URL: https://<backend-public-host>/mattermost/commands/create
 Method: POST
-Usage: /create <title> <date> <notification>
+Usage: /create <title> <date_mmddhhmm> <notification_mmddhhmm>
 ```
 
 ```text
 Trigger Word: quick
 Request URL: https://<backend-public-host>/mattermost/commands/quick
 Method: POST
-Usage: /quick <title> <date> <notification>
+Usage: /quick <title> <date_mmddhhmm> <notification_mmddhhmm>
 ```
 
 ```text
@@ -106,7 +106,4 @@ Method: POST
 Usage: /work <start|end|todo> <start_mmddhhmm> <end_mmddhhmm>
 ```
 
-`date` は `2026-08-10`、`notification` は `09:30` または `2026-08-10T09:30` を受け付ける。
-`notification` が時刻だけの場合は `date` と同じ日として扱う。
-
-`/work` の `mmddhhmm` は現在年の日時として扱う。例: `08100930` は今年の 08-10 09:30。`start` は Notion status `inprogress`、`end` は `done`、`todo` は `todo` に変換する。
+`mmddhhmm` は現在年の日時として扱う。例: `08100930` は今年の 08-10 09:30。`/work` の `start` は Notion status `inprogress`、`end` は `done`、`todo` は `todo` に変換する。

@@ -44,17 +44,17 @@ Usage: /remind <No> <minutes>
 Trigger Word: create
 Request URL: https://<backend-public-host>/mattermost/commands/create
 Method: POST
-Usage: /create <title> <date> <notification>
+Usage: /create <title> <date_mmddhhmm> <notification_mmddhhmm>
 ```
 
 例:
 
 ```text
-/create write report 2026-08-10 09:30
+/create write report 08100930 08101000
 ```
 
 末尾2つの token を `date` と `notification` として扱い、それより前を title にする。
-`notification` が `09:30` のような時刻だけの場合は `date` と同じ日として扱う。
+日時 token は `mmddhhmm` 形式で、現在年として扱う。
 
 ### quick
 
@@ -62,13 +62,13 @@ Usage: /create <title> <date> <notification>
 Trigger Word: quick
 Request URL: https://<backend-public-host>/mattermost/commands/quick
 Method: POST
-Usage: /quick <title> <date> <notification>
+Usage: /quick <title> <date_mmddhhmm> <notification_mmddhhmm>
 ```
 
 例:
 
 ```text
-/quick call customer 2026-08-10 09:30
+/quick call customer 08100930 08101000
 ```
 
 `create` と同じ形式で Notion item を作る。
@@ -107,7 +107,7 @@ todo  -> todo
 `/work` は `NOTION_WORK_TEMPLATE_ID` の template を使って Notion item を作る。
 
 ```dotenv
-NOTION_WORK_TEMPLATE_ID=3b2b7863-bd2f-80a7-a7cb-f23205bf4305
+NOTION_WORK_TEMPLATE_ID=
 ```
 
 ## Notes

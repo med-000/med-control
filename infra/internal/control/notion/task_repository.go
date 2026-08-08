@@ -45,6 +45,15 @@ func (repository *TaskRepository) CreateTask(ctx context.Context, command taskdo
 	return RowToTask(row), nil
 }
 
+func (repository *TaskRepository) UpdateTaskStatus(ctx context.Context, pageID string, status string) (taskdomain.Task, error) {
+	row, err := repository.client.UpdatePageStatus(ctx, pageID, status)
+	if err != nil {
+		return taskdomain.Task{}, err
+	}
+
+	return RowToTask(row), nil
+}
+
 func (repository *TaskRepository) FetchTaskByPageID(ctx context.Context, pageID string) (taskdomain.Task, error) {
 	row, err := repository.client.RetrievePageTask(ctx, pageID)
 	if err != nil {

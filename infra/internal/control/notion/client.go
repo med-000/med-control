@@ -128,6 +128,28 @@ func (client *Client) CreateDatabaseTask(ctx context.Context, databaseID string,
 	return page, nil
 }
 
+func (client *Client) UpdatePageStatus(ctx context.Context, pageID string, status string) (map[string]any, error) {
+	requestBody := map[string]any{
+		"properties": map[string]any{
+			MedControlTaskColumns.Status: notionStatusProperty(status),
+		},
+	}
+
+	endpoint := fmt.Sprintf("%s/v1/pages/%s", client.baseURL, url.PathEscape(pageID))
+	page, err := client.doJSON(ctx, http.MethodPatch, endpoint, requestBody)
+	if err != nil {
+		return nil, err
+	}
+
+	description, err := client.RetrievePageMarkdown(ctx, stringValue(page["id"]))
+	if err != nil {
+		return nil, err
+	}
+	page["description"] = description
+
+	return page, nil
+}
+
 func createTaskProperties(command taskdomain.CreateCommand) map[string]any {
 	properties := map[string]any{
 		MedControlTaskColumns.Title: map[string]any{
@@ -149,12 +171,7 @@ func createTaskProperties(command taskdomain.CreateCommand) map[string]any {
 		properties[MedControlTaskColumns.Notification] = notionDateProperty(command.Notification)
 	}
 	if command.Status != nil && command.Status.Name != "" {
-		properties[MedControlTaskColumns.Status] = map[string]any{
-			"type": "status",
-			"status": map[string]any{
-				"name": command.Status.Name,
-			},
-		}
+		properties[MedControlTaskColumns.Status] = notionStatusProperty(command.Status.Name)
 	}
 	if command.Priority != nil && command.Priority.Name != "" {
 		properties[MedControlTaskColumns.Priority] = map[string]any{
@@ -165,6 +182,15 @@ func createTaskProperties(command taskdomain.CreateCommand) map[string]any {
 		}
 	}
 	return properties
+}
+
+func notionStatusProperty(status string) map[string]any {
+	return map[string]any{
+		"type": "status",
+		"status": map[string]any{
+			"name": status,
+		},
+	}
 }
 
 func createTaskRequestBody(dataSourceID string, properties map[string]any, templateID string) map[string]any {

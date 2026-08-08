@@ -8,7 +8,7 @@ import (
 )
 
 func TestParseCreateTaskText(t *testing.T) {
-	command, err := parseCreateTaskText("write report 2026-08-10 09:30", nil)
+	command, err := parseCreateTaskText("write report 08100930 08101000", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -16,16 +16,16 @@ func TestParseCreateTaskText(t *testing.T) {
 	if command.Title != "write report" {
 		t.Fatalf("Title = %q, want %q", command.Title, "write report")
 	}
-	if command.Date == nil || command.Date.Start == nil || command.Date.Start.Format("2006-01-02") != "2026-08-10" {
+	if command.Date == nil || command.Date.Start == nil || command.Date.Start.Format("01-02 15:04") != "08-10 09:30" {
 		t.Fatalf("Date = %+v", command.Date)
 	}
-	if command.Notification == nil || command.Notification.Start == nil || command.Notification.Start.Format("2006-01-02 15:04") != "2026-08-10 09:30" {
+	if command.Notification == nil || command.Notification.Start == nil || command.Notification.Start.Format("01-02 15:04") != "08-10 10:00" {
 		t.Fatalf("Notification = %+v", command.Notification)
 	}
 }
 
 func TestParseCreateTaskTextAppliesPriority(t *testing.T) {
-	command, err := parseCreateTaskText("call back 2026-08-10 09:30", &taskdomain.SelectOption{Name: "High"})
+	command, err := parseCreateTaskText("call back 08100930 08101000", &taskdomain.SelectOption{Name: "High"})
 	if err != nil {
 		t.Fatal(err)
 	}

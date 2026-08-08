@@ -65,3 +65,12 @@ func TestCreateDatabaseTaskPropertiesIncludeStatusAndTemplate(t *testing.T) {
 		t.Fatalf("template_id = %q", template["template_id"])
 	}
 }
+
+func TestNotionStatusProperty(t *testing.T) {
+	property := notionStatusProperty("done")
+	status := property["status"].(map[string]any)
+
+	if status["name"] != "done" {
+		t.Fatalf("status name = %q", status["name"])
+	}
+}

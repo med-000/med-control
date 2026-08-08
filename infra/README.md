@@ -8,6 +8,7 @@
 - page 本文を Markdown に変換
 - `shared/domain/task.Task` に整形
 - backend に POST
+- 毎日 01:00 台に、前日までの label が `schedule` かつ status が `done` ではない item を Notion status `done` にする
 - `GET /notion/templates` で Notion data source template の一覧を返す
 - `POST /notion/webhook` で Notion Webhook を受け、該当 page を即時同期
 - `POST /tasks/quick` で backend から task 作成依頼を受け、Notion page を作る
@@ -72,20 +73,20 @@ go run ./cmd/templates
 Notion GUI から template の link を copy した場合は、URL 内の page ID 部分を使う。
 
 ```text
-https://app.notion.com/p/ollo-3b2b7863bd2f80a7a7cbf23205bf4305?v=...
+https://app.notion.com/p/<workspace>-<template_id_without_hyphens>?v=...
                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
 この例では以下が template ID。
 
 ```text
-3b2b7863bd2f80a7a7cbf23205bf4305
+<template_id_without_hyphens>
 ```
 
 API の `templates[].id` は hyphen 付きで返る。
 
 ```text
-3b2b7863-bd2f-80a7-a7cb-f23205bf4305
+<template-id-with-hyphens>
 ```
 
 hyphen を除いた値が GUI link の ID と一致すれば同じ template。
@@ -107,3 +108,22 @@ Event types:
 
 初回登録時、Notion は `verification_token` を送る。infra のログに出る token を Notion の verify 画面に貼る。
 本番では同じ token を `NOTION_WEBHOOK_VERIFICATION_TOKEN` に入れると `X-Notion-Signature` を検証する。
+
+## Auto Completion
+
+infra worker は毎日 01:00 台に前日までの未完了 schedule item を閉じる。
+
+対象:
+
+```text
+label: schedule
+date.start: 当日 00:00 より前
+status: done 以外
+```
+
+処理:
+
+```text
+Notion status -> done
+updated item -> backend に同期
+```
