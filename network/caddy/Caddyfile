@@ -1,0 +1,19 @@
+:8080 {
+	encode zstd gzip
+
+	handle /mattermost/commands/* {
+		reverse_proxy backend:8080
+	}
+
+	handle /notion/webhook {
+		reverse_proxy infra:8080
+	}
+
+	handle /health {
+		respond "ok" 200
+	}
+
+	handle {
+		respond "not found" 404
+	}
+}

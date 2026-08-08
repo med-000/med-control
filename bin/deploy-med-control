@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="/srv/med-control"
+ACTION="${1:-check}"
+RETRY_MAX="${DEPLOY_RETRY_MAX:-5}"
+RETRY_DELAY="${DEPLOY_RETRY_DELAY:-5}"
+STATUS_RETRY_MAX="${DEPLOY_STATUS_RETRY_MAX:-12}"
+STATUS_RETRY_DELAY="${DEPLOY_STATUS_RETRY_DELAY:-5}"
+
+log() {
+  printf '[deploy-med-control] %s\n' "$*" >&2
+}
+
+diagnose_network() {
+  log "network diagnostics"
+  command -v resolvectl >/dev/null 2>&1 && resolvectl query auth.docker.io || true
+  getent hosts auth.docker.io || true
+  getent hosts registry-1.docker.io || true
+  /usr/bin/docker info --format '{{json .RegistryConfig.IndexConfigs}}' || true
+}
+
+retry() {
+  label="$1"
+  shift
+  attempt=1
+  delay="$RETRY_DELAY"
+
+  until "$@"; do
+    status="$?"
+    if [ "$attempt" -ge "$RETRY_MAX" ]; then
+      log "ERROR: $label failed after $attempt attempts"
+      diagnose_network
+      return "$status"
+    fi
+
+    log "WARN: $label failed, retrying in ${delay}s ($attempt/$RETRY_MAX)"
+    sleep "$delay"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+}
+
+verify_containers() {
+  label="$1"
+  expect_recent="$2"
+  min_started_epoch="$3"
+  shift 3
+  attempt=1
+
+  while :; do
+    failed=0
+
+    for container in "$@"; do
+      if ! /usr/bin/docker inspect "$container" >/dev/null 2>&1; then
+        log "ERROR: $label: missing container $container"
+        failed=1
+        continue
+      fi
+
+      status="$(/usr/bin/docker inspect -f '{{.State.Status}}' "$container")"
+      health="$(/usr/bin/docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$container")"
+
+      if [ "$status" != "running" ]; then
+        log "WARN: $label: $container status=$status health=$health"
+        failed=1
+      elif [ "$health" = "unhealthy" ]; then
+        log "WARN: $label: $container status=$status health=$health"
+        failed=1
+      elif [ "$expect_recent" = "1" ]; then
+        started_at="$(/usr/bin/docker inspect -f '{{.State.StartedAt}}' "$container")"
+        started_epoch="$(date -u -d "$started_at" +%s 2>/dev/null || printf '0\n')"
+        if [ "$started_epoch" -lt "$min_started_epoch" ]; then
+          log "WARN: $label: $container was not recreated recently started_at=$started_at"
+          failed=1
+        fi
+      fi
+    done
+
+    if [ "$failed" -eq 0 ]; then
+      log "OK: $label containers are running"
+      return 0
+    fi
+
+    if [ "$attempt" -ge "$STATUS_RETRY_MAX" ]; then
+      log "ERROR: $label did not become ready after $attempt checks"
+      /usr/bin/docker ps -a --filter "name=med-control-" || true
+      return 1
+    fi
+
+    sleep "$STATUS_RETRY_DELAY"
+    attempt=$((attempt + 1))
+  done
+}
+
+compose() {
+  /usr/bin/docker compose \
+    --project-directory "$APP_DIR" \
+    "$@"
+}
+
+prepare_data() {
+  mkdir -p "$APP_DIR/data/backend"
+}
+
+check() {
+  prepare_data
+  compose config >/dev/null
+}
+
+pull() {
+  retry "pull med-control images" compose pull --ignore-buildable
+}
+
+reload() {
+  restart
+}
+
+restart() {
+  check
+  compose restart
+  verify_containers "med-control restart" 0 0 med-control-caddy med-control-backend-1 med-control-infra-1
+}
+
+recreate() {
+  check
+  pull
+  started_epoch="$(date -u +%s)"
+  compose up -d --build --force-recreate --remove-orphans
+  verify_containers "med-control recreate" 1 "$started_epoch" med-control-caddy med-control-backend-1 med-control-infra-1
+}
+
+ps() {
+  compose ps
+}
+
+case "$ACTION" in
+  check)
+    check
+    ;;
+  pull)
+    pull
+    ;;
+  reload)
+    reload
+    ;;
+  restart)
+    restart
+    ;;
+  recreate)
+    recreate
+    ;;
+  ps)
+    ps
+    ;;
+  *)
+    echo "invalid action: $ACTION" >&2
+    exit 2
+    ;;
+esac

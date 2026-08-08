@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	taskdomain "github.com/med-000/overview/shared/domain/task"
+	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
 
 type NotificationStore struct {
@@ -22,7 +22,7 @@ type NotificationStore struct {
 
 func NewNotificationStore(path string) (*NotificationStore, error) {
 	if path == "" {
-		path = "/data/overview.db"
+		path = "/data/med-control.db"
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, err

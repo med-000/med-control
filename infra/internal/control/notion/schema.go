@@ -11,7 +11,7 @@ type TaskColumns struct {
 	Notification string
 }
 
-var OverviewTaskColumns = TaskColumns{
+var MedControlTaskColumns = TaskColumns{
 	DisplayID:    "No",
 	Title:        "title",
 	Status:       "status",

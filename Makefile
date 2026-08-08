@@ -1,6 +1,6 @@
 SHELL := /bin/sh
 
-GO_CACHE ?= /tmp/overview-go-build-cache
+GO_CACHE ?= /tmp/med-control-go-build-cache
 GO_ENV := GOCACHE=$(GO_CACHE)
 
 .PHONY: help
@@ -41,8 +41,12 @@ test:
 docker-build:
 	docker compose build
 
+.PHONY: prepare-data
+prepare-data:
+	mkdir -p data/backend
+
 .PHONY: up
-up:
+up: prepare-data
 	docker compose up --build
 
 .PHONY: down

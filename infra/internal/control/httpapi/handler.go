@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/med-000/overview/infra/internal/app/tasksync"
-	taskdomain "github.com/med-000/overview/shared/domain/task"
+	"github.com/med-000/med-control/infra/internal/app/tasksync"
+	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
 
 type Handler struct {

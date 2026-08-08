@@ -1,0 +1,23 @@
+name: med-control-env-check
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  env-check:
+    name: github env check
+    runs-on: ubuntu-latest
+    env:
+      BACKEND_ENV_FILE: ${{ secrets.BACKEND_ENV_FILE }}
+      INFRA_ENV_FILE: ${{ secrets.INFRA_ENV_FILE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate env files from GitHub values
+        run: sh .github/scripts/write-env-files.sh
+
+      - name: Validate compose with generated env files
+        run: docker compose config

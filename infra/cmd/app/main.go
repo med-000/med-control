@@ -9,11 +9,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/med-000/overview/infra/internal/app/tasksync"
-	"github.com/med-000/overview/infra/internal/config"
-	backendcontrol "github.com/med-000/overview/infra/internal/control/backend"
-	"github.com/med-000/overview/infra/internal/control/httpapi"
-	notioncontrol "github.com/med-000/overview/infra/internal/control/notion"
+	"github.com/med-000/med-control/infra/internal/app/tasksync"
+	"github.com/med-000/med-control/infra/internal/config"
+	backendcontrol "github.com/med-000/med-control/infra/internal/control/backend"
+	"github.com/med-000/med-control/infra/internal/control/httpapi"
+	notioncontrol "github.com/med-000/med-control/infra/internal/control/notion"
 )
 
 func main() {
@@ -21,8 +21,8 @@ func main() {
 	if cfg.NotionAPIKey == "" {
 		exitWithError("NOTION_API_KEY is required")
 	}
-	if cfg.NoitonOverviewDBKey == "" {
-		exitWithError("NOITON_OVERVIEW_DB_KEY is required")
+	if cfg.NotionDatabaseID == "" {
+		exitWithError("NOTION_MED_CONTROL_DB_KEY is required")
 	}
 	if cfg.BackendTasksEndpoint == "" {
 		exitWithError("BACKEND_TASKS_ENDPOINT is required")
@@ -38,7 +38,7 @@ func main() {
 		PageSize:   cfg.NotionPageSize,
 		Timeout:    cfg.HTTPTimeout,
 	})
-	taskSource := notioncontrol.NewTaskRepository(notionClient, cfg.NoitonOverviewDBKey)
+	taskSource := notioncontrol.NewTaskRepository(notionClient, cfg.NotionDatabaseID)
 	taskDestination := backendcontrol.NewTaskSender(cfg.BackendTasksEndpoint, cfg.HTTPTimeout)
 	service := tasksync.NewService(taskSource, taskDestination)
 

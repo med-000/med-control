@@ -1,4 +1,18 @@
 services:
+  caddy:
+    image: caddy:2.8-alpine
+    container_name: med-control-caddy
+    volumes:
+      - ./network/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      infra:
+        condition: service_started
+    networks:
+      - default
+      - gateway
+
   backend:
     build:
       context: .
@@ -7,13 +21,12 @@ services:
       - backend/.env
     environment:
       BACKEND_ADDR: ":8080"
-      BACKEND_DB_PATH: "/data/overview.db"
+      BACKEND_DB_PATH: "/data/med-control.db"
       INFRA_QUICK_TASK_ENDPOINT: "http://infra:8080/tasks/quick"
       HTTP_TIMEOUT_SECONDS: "10"
-    ports:
-      - "8085:8080"
+    user: "${MED_CONTROL_UID:-1000}:${MED_CONTROL_GID:-1000}"
     volumes:
-      - backend_data:/data
+      - ./data/backend:/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
       interval: 10s
@@ -34,11 +47,11 @@ services:
       NOTION_API_VERSION: "2026-03-11"
       NOTION_PAGE_SIZE: "100"
       HTTP_TIMEOUT_SECONDS: "10"
-    ports:
-      - "8090:8080"
     depends_on:
       backend:
         condition: service_healthy
 
-volumes:
-  backend_data:
+networks:
+  gateway:
+    name: med2-gateway
+    external: true

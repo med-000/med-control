@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	taskdomain "github.com/med-000/overview/shared/domain/task"
+	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
 
 func TestNotificationStorePersistsSentNotification(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "overview.db")
+	path := filepath.Join(t.TempDir(), "med-control.db")
 	key := "notion:page-id:2026-08-05T09:00:00Z"
 
 	store, err := NewNotificationStore(path)

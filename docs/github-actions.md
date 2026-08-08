@@ -5,16 +5,16 @@
 この repo では GitHub Actions で CI / 環境変数チェック / CD を分けている。
 
 ```text
-overview-ci
+med-control-ci
   Go test、Docker build、.env commit 防止
 
-overview-env-check
-  GitHub Secrets / Variables から .env を生成できるか確認
+med-control-env-check
+  GitHub Secrets から .env を生成できるか確認
 
-overview-deploy
+med-control-deploy
   Tailscale 経由でホストへ SSH
   ホスト上の clone 済み repo を git pull 相当で更新
-  GitHub の値から .env を生成
+  GitHub Secrets の *_ENV_FILE から .env を生成
   Docker Compose で反映
 ```
 
@@ -25,8 +25,8 @@ GitHub が自動で「どのディレクトリに push するか」を選ぶわ�
 deploy workflow が以下を使って、反映先を明示している。
 
 ```text
-DEPLOY_HOST
-DEPLOY_USER
+SSH_HOST
+SSH_USER
 DEPLOY_PATH
 ```
 
@@ -35,10 +35,10 @@ DEPLOY_PATH
 例:
 
 ```sh
-sudo mkdir -p /srv/overview
-sudo chown "$USER":"$USER" /srv/overview
-git clone https://github.com/med-000/overview.git /srv/overview
-cd /srv/overview
+sudo mkdir -p /srv/med-control
+sudo chown "$USER":"$USER" /srv/med-control
+git clone https://github.com/med-000/med-control.git /srv/med-control
+cd /srv/med-control
 git checkout main
 ```
 
@@ -54,7 +54,7 @@ git reset --hard origin/main
 
 ## Workflows
 
-### overview-ci
+### med-control-ci
 
 実行タイミング:
 
@@ -71,7 +71,7 @@ workflow_dispatch
 - `docker compose build`
 - `.env` が commit されていないか確認
 
-### overview-env-check
+### med-control-env-check
 
 実行タイミング:
 
@@ -82,11 +82,11 @@ workflow_dispatch
 
 内容:
 
-- GitHub Secrets / Variables から `backend/.env` と `infra/.env` を生成
+- GitHub Secrets の `BACKEND_ENV_FILE` と `INFRA_ENV_FILE` から `backend/.env` と `infra/.env` を生成
 - 必須値が入っていなければ失敗
 - 生成した `.env` で `docker compose config`
 
-### overview-deploy
+### med-control-deploy
 
 実行タイミング:
 
@@ -100,13 +100,12 @@ workflow_dispatch
 - GitHub-hosted runner が Tailscale に一時参加
 - deploy host に SSH
 - `DEPLOY_PATH` の clone 済み repo を `origin/main` に更新
-- GitHub Secrets / Variables から `.env` を生成してホストへ配置
-- ホスト上で `docker compose config`
-- `docker compose up -d --build`
+- GitHub Secrets の `BACKEND_ENV_FILE` と `INFRA_ENV_FILE` から `.env` を生成してホストへ配置
+- `sudo -n /usr/local/bin/deploy-med-control check` で構成確認
+- push または `apply=deploy` では `sudo -n /usr/local/bin/deploy-med-control recreate`
+- `apply=restart` では `sudo -n /usr/local/bin/deploy-med-control restart`
 
-## GitHub Environment
-
-`production` environment を使う。
+## GitHub Secrets
 
 場所:
 
@@ -115,59 +114,65 @@ Repository
 -> Settings
 -> Secrets and variables
 -> Actions
--> Environments
--> production
+-> Secrets
 ```
 
-Environment はディレクトリ単位ではなく、deploy 先や実行環境単位で使う。
+Environment は使わず、repository secrets / variables に置く。
 
 ## 必要な Secrets
 
-`production` environment の Secrets に入れる。
+Repository Secrets に入れる。
 
 ```text
-DEPLOY_HOST
-DEPLOY_USER
-DEPLOY_SSH_PRIVATE_KEY
-DEPLOY_SSH_PORT
+SSH_HOST
+SSH_USER
+SSH_PRIVATE_KEY
+SSH_PORT
 TS_OAUTH_CLIENT_ID
 TS_OAUTH_SECRET
-MATTERMOST_OVERVIEW_WEBHOOK
-NOTION_API_KEY
-NOITON_OVERVIEW_DB_KEY
+BACKEND_ENV_FILE
+INFRA_ENV_FILE
 ```
 
-Mattermost slash command token は、以下のどちらかで入れる。
-値は Mattermost の Slash Command 作成後に表示される `Token`。
-入れる場所は `production` environment の Secrets。
+`BACKEND_ENV_FILE` には `backend/.env` の全文を入れる。
 
-共通 token:
+例:
 
-```text
-MATTERMOST_COMMAND_TOKEN
+```dotenv
+BACKEND_ADDR=:8080
+BACKEND_DB_PATH=/data/med-control.db
+MATTERMOST_MED_CONTROL_WEBHOOK=https://...
+MATTERMOST_COMMAND_TOKEN=...
+MATTERMOST_REMIND_COMMAND_TOKEN=
+MATTERMOST_QUICK_COMMAND_TOKEN=
+INFRA_QUICK_TASK_ENDPOINT=http://infra:8080/tasks/quick
+TASK_NOTIFY_INTERVAL_SECONDS=60
+HTTP_TIMEOUT_SECONDS=10
 ```
 
-command 別 token:
+`INFRA_ENV_FILE` には `infra/.env` の全文を入れる。
 
-```text
-MATTERMOST_REMIND_COMMAND_TOKEN
-MATTERMOST_QUICK_COMMAND_TOKEN
+例:
+
+```dotenv
+NOTION_API_KEY=secret_...
+NOTION_MED_CONTROL_DB_KEY=...
+BACKEND_TASKS_ENDPOINT=http://backend:8080/tasks/import
+NOTION_SYNC_INTERVAL_SECONDS=300
+NOTION_WEBHOOK_ADDR=:8080
+NOTION_WEBHOOK_VERIFICATION_TOKEN=
+NOTION_API_BASE_URL=https://api.notion.com
+NOTION_API_VERSION=2026-03-11
+NOTION_PAGE_SIZE=100
+HTTP_TIMEOUT_SECONDS=10
 ```
 
-`DEPLOY_SSH_PORT` は通常 `22`。省略しても workflow 側で `22` として扱う。
+`SSH_PORT` は通常 `22`。省略しても workflow 側で `22` として扱う。
 
-`DEPLOY_HOST` は Tailscale IP か MagicDNS hostname。
+`SSH_HOST` は Tailscale IP か MagicDNS hostname。
 
 `TS_OAUTH_CLIENT_ID` と `TS_OAUTH_SECRET` は Tailscale 経由で SSH するために必要。
 Tailscale OAuth client は `tag:github-actions` を使えるようにしておく。
-
-任意の Secret:
-
-```text
-NOTION_WEBHOOK_VERIFICATION_TOKEN
-```
-
-Notion Webhook の初回 verification で取得した token。設定すると infra が `X-Notion-Signature` を検証する。
 
 ## Variables
 
@@ -177,24 +182,17 @@ Notion Webhook の初回 verification で取得した token。設定すると in
 DEPLOY_PATH
 ```
 
-任意:
-
-```text
-NOTION_SYNC_INTERVAL_SECONDS
-```
-
 初期値の例:
 
 ```text
-DEPLOY_PATH=/srv/overview
-NOTION_SYNC_INTERVAL_SECONDS=300
+DEPLOY_PATH=/srv/med-control
 ```
 
 `DEPLOY_PATH` は必須。ホスト上の clone 済み repo の絶対パス。
+`bin/deploy-med-control` の `APP_DIR` と合わせるため、現在は `/srv/med-control` 固定。
 
-`NOTION_SYNC_INTERVAL_SECONDS` は未設定でも `300` 秒として扱う。頻繁に変える可能性があるため、必要なら Variable にしてよい。
-
-それ以外のポート、timeout、Notion API version などは細かすぎるので GitHub Variables には置かない。必要になったら `.env.example` と app config の default を見直す。
+app 設定は GitHub Variables に分けず、ディレクトリ名に対応した `BACKEND_ENV_FILE` / `INFRA_ENV_FILE` の Secret にまとめる。
+`.env` の項目を増やす場合は `.env.example` と app config を更新し、対応する `*_ENV_FILE` の本文も更新する。
 
 ## 手動 deploy
 
@@ -202,7 +200,7 @@ NOTION_SYNC_INTERVAL_SECONDS=300
 
 ```text
 Actions
--> overview-deploy
+-> med-control-deploy
 -> Run workflow
 -> apply=check
 ```
@@ -211,7 +209,7 @@ Actions
 
 ```text
 Actions
--> overview-deploy
+-> med-control-deploy
 -> Run workflow
 -> apply=deploy
 ```
@@ -220,7 +218,7 @@ Actions
 
 ```text
 Actions
--> overview-deploy
+-> med-control-deploy
 -> Run workflow
 -> apply=restart
 ```
@@ -238,12 +236,63 @@ scp/ssh
 
 GitHub Actions 用の SSH public key を deploy user の `~/.ssh/authorized_keys` に入れておく。
 
-private key は GitHub Secret `DEPLOY_SSH_PRIVATE_KEY` に入れる。
+private key は GitHub Secret `SSH_PRIVATE_KEY` に入れる。
+
+Docker Compose の永続データは deploy host の `$DEPLOY_PATH/data/` に置く。
+`data/` は Git 追跡対象外。
+
+app 内 Caddy は `med-control-caddy` という container name で `med2-gateway` network に参加する。
+med2 側の `network/caddy/routes.yaml` では `upstream` に以下を指定する。
+
+```yaml
+upstream: med-control-caddy:8080
+```
+
+public path の振り分けは repo 内の `network/caddy/Caddyfile` が持つ。
+
+```text
+/mattermost/commands/* -> backend:8080
+/notion/webhook        -> infra:8080
+```
+
+## deploy script
+
+Git 管理している deploy script は `bin/deploy-med-control`。
+これは server 上で直接その path を叩く実体ではなく、root owned script として `/usr/local/bin/deploy-med-control` に配置するための元ファイル。
+
+server 側への配置:
+
+```sh
+sudo install -o root -g root -m 755 /srv/med-control/bin/deploy-med-control /usr/local/bin/deploy-med-control
+```
+
+deploy user に `docker group` や `sudo ALL` は渡さない。
+Docker 操作は `/usr/local/bin/deploy-med-control` の固定 action だけに閉じ込める。
+
+sudoers は `visudo` で作る。
+
+```sh
+sudo visudo -f /etc/sudoers.d/deploy-med-control
+```
+
+中身:
+
+```sudoers
+<deploy-user> ALL=(root) NOPASSWD: /usr/local/bin/deploy-med-control check
+<deploy-user> ALL=(root) NOPASSWD: /usr/local/bin/deploy-med-control pull
+<deploy-user> ALL=(root) NOPASSWD: /usr/local/bin/deploy-med-control reload
+<deploy-user> ALL=(root) NOPASSWD: /usr/local/bin/deploy-med-control restart
+<deploy-user> ALL=(root) NOPASSWD: /usr/local/bin/deploy-med-control recreate
+<deploy-user> ALL=(root) NOPASSWD: /usr/local/bin/deploy-med-control ps
+```
+
+workflow は host 上の repo と `.env` を更新した後、この script を `sudo -n` で呼ぶ。
+`sudo -n` は password prompt を出さないため、sudoers 設定が足りない場合は CI/CD 上で即失敗する。
 
 ## 注意
 
 `.env` は repo に commit しない。
 
-本番 `.env` は GitHub Secrets / Variables から workflow が生成する。
+本番 `.env` は GitHub Secrets の `BACKEND_ENV_FILE` / `INFRA_ENV_FILE` から workflow が生成する。
 
 main push 時は deploy が自動で走る。最初の動作確認では `workflow_dispatch` の `apply=check` から試す。

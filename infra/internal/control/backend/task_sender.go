@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"time"
 
-	taskdomain "github.com/med-000/overview/shared/domain/task"
+	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
 
 type TaskSender struct {

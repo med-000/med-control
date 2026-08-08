@@ -89,7 +89,7 @@ func (client *Client) CreateDatabaseTask(ctx context.Context, databaseID string,
 			"data_source_id": dataSourceID,
 		},
 		"properties": map[string]any{
-			OverviewTaskColumns.Title: map[string]any{
+			MedControlTaskColumns.Title: map[string]any{
 				"type": "title",
 				"title": []map[string]any{
 					{

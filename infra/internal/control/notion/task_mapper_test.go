@@ -3,19 +3,19 @@ package notion
 import (
 	"testing"
 
-	taskdomain "github.com/med-000/overview/shared/domain/task"
+	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
 
 func TestRowToTaskMapsUniqueIDWithoutPrefix(t *testing.T) {
 	row := map[string]any{
 		"id": "page-id",
 		"properties": map[string]any{
-			OverviewTaskColumns.DisplayID: map[string]any{
+			MedControlTaskColumns.DisplayID: map[string]any{
 				"unique_id": map[string]any{
 					"number": float64(5),
 				},
 			},
-			OverviewTaskColumns.Title: map[string]any{
+			MedControlTaskColumns.Title: map[string]any{
 				"title": []any{
 					map[string]any{"plain_text": "ollo写真撮影"},
 				},
@@ -37,7 +37,7 @@ func TestRowToTaskMapsUniqueIDWithPrefix(t *testing.T) {
 	row := map[string]any{
 		"id": "page-id",
 		"properties": map[string]any{
-			OverviewTaskColumns.DisplayID: map[string]any{
+			MedControlTaskColumns.DisplayID: map[string]any{
 				"unique_id": map[string]any{
 					"prefix": "OVW",
 					"number": float64(6),
