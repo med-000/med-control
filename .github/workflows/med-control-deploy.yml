@@ -4,14 +4,17 @@ on:
   workflow_dispatch:
     inputs:
       apply:
-        description: "Deployment action"
+        description: "Action to run on med-control"
         required: true
-        type: choice
         default: "check"
+        type: choice
         options:
           - check
-          - deploy
+          - pull
+          - reload
           - restart
+          - recreate
+          - ps
   push:
     branches:
       - main
@@ -24,72 +27,160 @@ jobs:
   deploy:
     name: deploy
     runs-on: ubuntu-latest
-    env:
-      SSH_HOST: ${{ secrets.SSH_HOST }}
-      SSH_USER: ${{ secrets.SSH_USER }}
-      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-      SSH_PORT: ${{ secrets.SSH_PORT }}
-      TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-      TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
-      BACKEND_ENV_FILE: ${{ secrets.BACKEND_ENV_FILE }}
-      INFRA_ENV_FILE: ${{ secrets.INFRA_ENV_FILE }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Validate deploy environment
+      - name: Decide deploy action
+        id: decide
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+          INPUT_APPLY: ${{ github.event.inputs.apply }}
         run: |
-          required='SSH_HOST SSH_USER SSH_PRIVATE_KEY TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET BACKEND_ENV_FILE INFRA_ENV_FILE'
-          for name in $required; do
-            value="$(printenv "$name" || true)"
-            if [ -z "$value" ]; then
-              echo "missing required deploy value: $name" >&2
-              exit 1
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            apply="${INPUT_APPLY:-check}"
+          else
+            if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+              changed="$(git diff --name-only "$BEFORE" "$SHA")"
+            else
+              changed="$(git diff-tree --no-commit-id --name-only -r "$SHA")"
             fi
-          done
 
-      - name: Generate env files from GitHub values
-        run: sh .github/scripts/write-env-files.sh
+            printf '%s\n' "$changed"
 
-      - name: Connect to Tailscale
-        uses: tailscale/github-action@v3
+            if printf '%s\n' "$changed" | grep -Eq '^(compose\.yaml|Makefile|backend/|infra/|shared/|network/|bin/deploy-med-control|\.github/workflows/med-control-deploy\.yml)'; then
+              apply="recreate"
+            else
+              apply="check"
+            fi
+          fi
+
+          echo "apply=$apply" >> "$GITHUB_OUTPUT"
+          echo "Deploy action: $apply"
+
+      - name: Join tailnet
+        uses: tailscale/github-action@v4
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:github-actions
+          ping: ${{ secrets.SSH_HOST }}
 
-      - name: Prepare SSH
+      - name: Configure SSH
+        shell: bash
         run: |
+          set -euo pipefail
+
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/med-control_deploy_key
+
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/med-control_deploy_key
           chmod 600 ~/.ssh/med-control_deploy_key
-          ssh-keyscan -p "${SSH_PORT:-22}" "$SSH_HOST" >> ~/.ssh/known_hosts
 
-      - name: Update clone on host
-        run: |
-          port="${SSH_PORT:-22}"
-          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "cd /srv/med-control && git fetch origin main && git reset --hard origin/main"
+          ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
 
-      - name: Write env files on host
+      - name: Generate deploy env files
+        shell: bash
+        env:
+          BACKEND_ENV_FILE: ${{ secrets.BACKEND_ENV_FILE }}
+          INFRA_ENV_FILE: ${{ secrets.INFRA_ENV_FILE }}
         run: |
-          port="${SSH_PORT:-22}"
-          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "cd /srv/med-control && mkdir -p backend infra"
-          scp -i ~/.ssh/med-control_deploy_key -P "$port" backend/.env "$SSH_USER@$SSH_HOST:/srv/med-control/backend/.env"
-          scp -i ~/.ssh/med-control_deploy_key -P "$port" infra/.env "$SSH_USER@$SSH_HOST:/srv/med-control/infra/.env"
+          set -euo pipefail
+          sh .github/scripts/write-env-files.sh
 
-      - name: Check on host
+      - name: Upload deploy env files
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          APP_DIR: /srv/med-control
         run: |
-          port="${SSH_PORT:-22}"
-          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "sudo -n /usr/local/bin/deploy-med-control check"
+          set -euo pipefail
 
-      - name: Apply deploy
-        if: ${{ github.event_name == 'push' || inputs.apply == 'deploy' }}
-        run: |
-          port="${SSH_PORT:-22}"
-          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "sudo -n /usr/local/bin/deploy-med-control recreate"
+          touch .env.deploy
+          chmod 600 .env.deploy
+          chmod 600 backend/.env infra/.env
 
-      - name: Restart services
-        if: ${{ inputs.apply == 'restart' }}
+          root_tmp="$APP_DIR/.env.github-actions.tmp"
+          backend_tmp="$APP_DIR/backend/.env.github-actions.tmp"
+          infra_tmp="$APP_DIR/infra/.env.github-actions.tmp"
+
+          ssh \
+            -i ~/.ssh/med-control_deploy_key \
+            -p "$SSH_PORT" \
+            "$SSH_USER@$SSH_HOST" \
+            "cd '$APP_DIR' && mkdir -p backend infra"
+
+          scp \
+            -i ~/.ssh/med-control_deploy_key \
+            -P "$SSH_PORT" \
+            .env.deploy \
+            "$SSH_USER@$SSH_HOST:$root_tmp"
+
+          scp \
+            -i ~/.ssh/med-control_deploy_key \
+            -P "$SSH_PORT" \
+            backend/.env \
+            "$SSH_USER@$SSH_HOST:$backend_tmp"
+
+          scp \
+            -i ~/.ssh/med-control_deploy_key \
+            -P "$SSH_PORT" \
+            infra/.env \
+            "$SSH_USER@$SSH_HOST:$infra_tmp"
+
+          ssh \
+            -i ~/.ssh/med-control_deploy_key \
+            -p "$SSH_PORT" \
+            "$SSH_USER@$SSH_HOST" \
+            "chmod 600 '$root_tmp' '$backend_tmp' '$infra_tmp' && mv '$root_tmp' '$APP_DIR/.env' && mv '$backend_tmp' '$APP_DIR/backend/.env' && mv '$infra_tmp' '$APP_DIR/infra/.env'"
+
+      - name: Update app source
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          APP_DIR: /srv/med-control
         run: |
-          port="${SSH_PORT:-22}"
-          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "sudo -n /usr/local/bin/deploy-med-control restart"
+          set -euo pipefail
+
+          ssh \
+            -i ~/.ssh/med-control_deploy_key \
+            -p "$SSH_PORT" \
+            "$SSH_USER@$SSH_HOST" \
+            "cd '$APP_DIR' && git pull --ff-only"
+
+      - name: Deploy med-control
+        shell: bash
+        env:
+          APPLY: ${{ steps.decide.outputs.apply }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          set -euo pipefail
+
+          case "$APPLY" in
+            check|pull|reload|restart|recreate|ps)
+              ;;
+            *)
+              echo "unsupported APPLY: $APPLY" >&2
+              exit 2
+              ;;
+          esac
+
+          ssh \
+            -i ~/.ssh/med-control_deploy_key \
+            -p "$SSH_PORT" \
+            "$SSH_USER@$SSH_HOST" \
+            "sudo -n /usr/local/bin/deploy-med-control '$APPLY'"
