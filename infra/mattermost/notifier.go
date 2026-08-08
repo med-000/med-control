@@ -72,7 +72,7 @@ func formatTaskMessage(task taskdomain.Task) string {
 	lines = append(lines, "### "+task.DisplayTitle())
 
 	if task.Date != nil && task.Date.Start != nil {
-		lines = append(lines, "- date: "+task.Date.Start.Format(time.RFC3339))
+		lines = append(lines, "- date: "+formatDateTime(*task.Date.Start, task.Date.TimeZone))
 	}
 	if task.Status != nil {
 		lines = append(lines, "- status: "+task.Status.Name)
@@ -94,6 +94,19 @@ func formatTaskMessage(task taskdomain.Task) string {
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+func formatDateTime(value time.Time, timeZone string) string {
+	location := time.Local
+	if timeZone != "" {
+		if loaded, err := time.LoadLocation(timeZone); err == nil {
+			location = loaded
+		}
+	} else if loaded, err := time.LoadLocation("Asia/Tokyo"); err == nil {
+		location = loaded
+	}
+
+	return value.In(location).Format("2006-01-02 15:04")
 }
 
 func joinOptionNames(options []taskdomain.SelectOption) string {
