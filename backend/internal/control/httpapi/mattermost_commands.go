@@ -12,6 +12,8 @@ import (
 	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
 
+const defaultCommandTimeZone = "Asia/Tokyo"
+
 func (handler *Handler) remindCommand(writer http.ResponseWriter, request *http.Request) {
 	if !handler.validMattermostCommand(writer, request, handler.tokens.Remind) {
 		return
@@ -116,7 +118,7 @@ func parseWorkText(text string, now time.Time, templateID string) (taskdomain.Cr
 	return taskdomain.CreateCommand{
 		Title:      "ollo勤務",
 		Status:     status,
-		Date:       &taskdomain.DateRange{Start: &start, End: &end},
+		Date:       &taskdomain.DateRange{Start: &start, End: &end, TimeZone: defaultCommandTimeZone},
 		TemplateID: templateID,
 	}, nil
 }
@@ -155,11 +157,21 @@ func parseMMDDHHMM(value string, now time.Time) (time.Time, error) {
 		return time.Time{}, fmt.Errorf("invalid minute: %s", value[6:])
 	}
 
-	result := time.Date(now.Year(), time.Month(month), day, hour, minute, 0, 0, time.Local)
+	location := commandLocation()
+	now = now.In(location)
+	result := time.Date(now.Year(), time.Month(month), day, hour, minute, 0, 0, location)
 	if result.Month() != time.Month(month) || result.Day() != day || result.Hour() != hour || result.Minute() != minute {
 		return time.Time{}, fmt.Errorf("invalid mmddhhmm: %s", value)
 	}
 	return result, nil
+}
+
+func commandLocation() *time.Location {
+	location, err := time.LoadLocation(defaultCommandTimeZone)
+	if err != nil {
+		return time.Local
+	}
+	return location
 }
 
 func parseRemindText(text string) (string, int, error) {
@@ -199,8 +211,8 @@ func parseCreateTaskText(text string, priority *taskdomain.SelectOption) (taskdo
 
 	return taskdomain.CreateCommand{
 		Title:        title,
-		Date:         &taskdomain.DateRange{Start: &date},
-		Notification: &taskdomain.DateRange{Start: &notification},
+		Date:         &taskdomain.DateRange{Start: &date, TimeZone: defaultCommandTimeZone},
+		Notification: &taskdomain.DateRange{Start: &notification, TimeZone: defaultCommandTimeZone},
 		Priority:     cloneSelectOption(priority),
 	}, nil
 }

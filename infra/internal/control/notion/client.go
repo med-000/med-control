@@ -211,14 +211,18 @@ func createTaskRequestBody(dataSourceID string, properties map[string]any, templ
 }
 
 func notionDateProperty(value *taskdomain.DateRange) map[string]any {
+	timeZone := firstNonEmptyString(value.TimeZone, "Asia/Tokyo")
+	location := time.Local
+	if loaded, err := time.LoadLocation(timeZone); err == nil {
+		location = loaded
+	}
+
 	date := map[string]any{
-		"start": value.Start.Format(time.RFC3339),
+		"start":     value.Start.In(location).Format("2006-01-02T15:04:05"),
+		"time_zone": timeZone,
 	}
 	if value.End != nil {
-		date["end"] = value.End.Format(time.RFC3339)
-	}
-	if value.TimeZone != "" {
-		date["time_zone"] = value.TimeZone
+		date["end"] = value.End.In(location).Format("2006-01-02T15:04:05")
 	}
 	return map[string]any{
 		"type": "date",

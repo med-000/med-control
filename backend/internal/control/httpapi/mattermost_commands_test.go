@@ -19,8 +19,14 @@ func TestParseCreateTaskText(t *testing.T) {
 	if command.Date == nil || command.Date.Start == nil || command.Date.Start.Format("01-02 15:04") != "08-10 09:30" {
 		t.Fatalf("Date = %+v", command.Date)
 	}
+	if command.Date.TimeZone != "Asia/Tokyo" {
+		t.Fatalf("Date.TimeZone = %q", command.Date.TimeZone)
+	}
 	if command.Notification == nil || command.Notification.Start == nil || command.Notification.Start.Format("01-02 15:04") != "08-10 10:00" {
 		t.Fatalf("Notification = %+v", command.Notification)
+	}
+	if command.Notification.TimeZone != "Asia/Tokyo" {
+		t.Fatalf("Notification.TimeZone = %q", command.Notification.TimeZone)
 	}
 }
 
@@ -60,6 +66,9 @@ func TestParseWorkText(t *testing.T) {
 	}
 	if command.Date == nil || command.Date.Start == nil || command.Date.End == nil {
 		t.Fatalf("Date = %+v", command.Date)
+	}
+	if command.Date.TimeZone != "Asia/Tokyo" {
+		t.Fatalf("Date.TimeZone = %q", command.Date.TimeZone)
 	}
 	if command.Date.Start.Format("2006-01-02 15:04") != "2026-08-10 09:30" {
 		t.Fatalf("Date.Start = %s", command.Date.Start.Format("2006-01-02 15:04"))
