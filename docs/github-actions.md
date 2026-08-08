@@ -13,7 +13,7 @@ med-control-env-check
 
 med-control-deploy
   Tailscale 経由でホストへ SSH
-  ホスト上の clone 済み repo を git pull 相当で更新
+  ホスト上の clone 済み repo を git pull --ff-only で更新
   GitHub Secrets の *_ENV_FILE から .env を生成
   Docker Compose で反映
 ```
@@ -46,8 +46,7 @@ Actions はその後、ホスト上で以下を実行する。
 
 ```sh
 cd /srv/med-control
-git fetch origin main
-git reset --hard origin/main
+git pull --ff-only
 ```
 
 つまり、反映先は GitHub 側が選ぶのではなく、この repo の deploy workflow / deploy script が決めた `/srv/med-control`。
@@ -99,11 +98,10 @@ workflow_dispatch
 
 - GitHub-hosted runner が Tailscale に一時参加
 - deploy host に SSH
-- `/srv/med-control` の clone 済み repo を `origin/main` に更新
-- GitHub Secrets の `BACKEND_ENV_FILE` と `INFRA_ENV_FILE` から `.env` を生成してホストへ配置
-- `sudo -n /usr/local/bin/deploy-med-control check` で構成確認
-- push または `apply=deploy` では `sudo -n /usr/local/bin/deploy-med-control recreate`
-- `apply=restart` では `sudo -n /usr/local/bin/deploy-med-control restart`
+- `/srv/med-control` の clone 済み repo を `git pull --ff-only` で更新
+- GitHub Secrets の `BACKEND_ENV_FILE` と `INFRA_ENV_FILE` から `backend/.env` / `infra/.env` を生成してホストへ配置
+- 変更 file から deploy action を決める
+- `sudo -n /usr/local/bin/deploy-med-control <action>` を実行する
 
 ## GitHub Secrets
 
@@ -180,6 +178,17 @@ Tailscale OAuth client は `tag:github-actions` を使えるようにしてお�
 deploy 先 path は `/srv/med-control` に固定し、app 設定は GitHub Variables に分けず、ディレクトリ名に対応した `BACKEND_ENV_FILE` / `INFRA_ENV_FILE` の Secret にまとめる。
 `.env` の項目を増やす場合は `.env.example` と app config を更新し、対応する `*_ENV_FILE` の本文も更新する。
 
+med4svc の `ENV_FILE` 1本方式とは違い、この repo は service directory ごとに `.env` を分ける。
+workflow は remote 上で以下を atomically 置き換える。
+
+```text
+/srv/med-control/.env
+/srv/med-control/backend/.env
+/srv/med-control/infra/.env
+```
+
+root の `.env` は Docker Compose の `--env-file` 用で、通常は空 file。
+
 ## 手動 deploy
 
 接続とチェックだけ:
@@ -191,13 +200,13 @@ Actions
 -> apply=check
 ```
 
-反映まで行う:
+再作成まで行う:
 
 ```text
 Actions
 -> med-control-deploy
 -> Run workflow
--> apply=deploy
+-> apply=recreate
 ```
 
 サービス再起動だけ:

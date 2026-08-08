@@ -2,6 +2,7 @@
 set -euo pipefail
 
 APP_DIR="/srv/med-control"
+ENV_FILE="$APP_DIR/.env"
 ACTION="${1:-check}"
 RETRY_MAX="${DEPLOY_RETRY_MAX:-5}"
 RETRY_DELAY="${DEPLOY_RETRY_DELAY:-5}"
@@ -96,6 +97,7 @@ verify_containers() {
 compose() {
   /usr/bin/docker compose \
     --project-directory "$APP_DIR" \
+    --env-file "$ENV_FILE" \
     "$@"
 }
 
