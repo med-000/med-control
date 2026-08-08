@@ -47,6 +47,7 @@ type CreateCommand struct {
 	Priority     *SelectOption  `json:"priority,omitempty"`
 	Notification *DateRange     `json:"notification,omitempty"`
 	Description  string         `json:"description,omitempty"`
+	TemplateID   string         `json:"template_id,omitempty"`
 }
 
 type UpdateCommand struct {

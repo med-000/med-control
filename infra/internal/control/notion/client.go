@@ -9,6 +9,9 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/med-000/med-control/infra/internal/app/tasksync"
+	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
 
 type Client struct {
@@ -72,7 +75,7 @@ func (client *Client) RetrieveDatabaseRows(ctx context.Context, databaseID strin
 	return client.QueryDataSource(ctx, dataSourceID)
 }
 
-func (client *Client) CreateDatabaseTask(ctx context.Context, databaseID string, title string) (map[string]any, error) {
+func (client *Client) ListDatabaseTemplates(ctx context.Context, databaseID string) ([]tasksync.Template, error) {
 	database, err := client.RetrieveDatabase(ctx, databaseID)
 	if err != nil {
 		return nil, err
@@ -83,25 +86,32 @@ func (client *Client) CreateDatabaseTask(ctx context.Context, databaseID string,
 		return nil, err
 	}
 
-	requestBody := map[string]any{
-		"parent": map[string]any{
-			"type":           "data_source_id",
-			"data_source_id": dataSourceID,
-		},
-		"properties": map[string]any{
-			MedControlTaskColumns.Title: map[string]any{
-				"type": "title",
-				"title": []map[string]any{
-					{
-						"type": "text",
-						"text": map[string]any{
-							"content": title,
-						},
-					},
-				},
-			},
-		},
+	return client.ListDataSourceTemplates(ctx, dataSourceID)
+}
+
+func (client *Client) ListDataSourceTemplates(ctx context.Context, dataSourceID string) ([]tasksync.Template, error) {
+	endpoint := fmt.Sprintf("%s/v1/data_sources/%s/templates?page_size=100", client.baseURL, url.PathEscape(dataSourceID))
+	response, err := client.doJSON(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
 	}
+
+	return templatesFromResponse(response)
+}
+
+func (client *Client) CreateDatabaseTask(ctx context.Context, databaseID string, command taskdomain.CreateCommand) (map[string]any, error) {
+	database, err := client.RetrieveDatabase(ctx, databaseID)
+	if err != nil {
+		return nil, err
+	}
+
+	dataSourceID, err := firstDataSourceID(database)
+	if err != nil {
+		return nil, err
+	}
+
+	properties := createTaskProperties(command)
+	requestBody := createTaskRequestBody(dataSourceID, properties, command.TemplateID)
 
 	endpoint := fmt.Sprintf("%s/v1/pages", client.baseURL)
 	page, err := client.doJSON(ctx, http.MethodPost, endpoint, requestBody)
@@ -116,6 +126,99 @@ func (client *Client) CreateDatabaseTask(ctx context.Context, databaseID string,
 	page["description"] = description
 
 	return page, nil
+}
+
+func createTaskProperties(command taskdomain.CreateCommand) map[string]any {
+	properties := map[string]any{
+		MedControlTaskColumns.Title: map[string]any{
+			"type": "title",
+			"title": []map[string]any{
+				{
+					"type": "text",
+					"text": map[string]any{
+						"content": command.Title,
+					},
+				},
+			},
+		},
+	}
+	if command.Date != nil && command.Date.Start != nil {
+		properties[MedControlTaskColumns.Date] = notionDateProperty(command.Date)
+	}
+	if command.Notification != nil && command.Notification.Start != nil {
+		properties[MedControlTaskColumns.Notification] = notionDateProperty(command.Notification)
+	}
+	if command.Status != nil && command.Status.Name != "" {
+		properties[MedControlTaskColumns.Status] = map[string]any{
+			"type": "status",
+			"status": map[string]any{
+				"name": command.Status.Name,
+			},
+		}
+	}
+	if command.Priority != nil && command.Priority.Name != "" {
+		properties[MedControlTaskColumns.Priority] = map[string]any{
+			"type": "select",
+			"select": map[string]any{
+				"name": command.Priority.Name,
+			},
+		}
+	}
+	return properties
+}
+
+func createTaskRequestBody(dataSourceID string, properties map[string]any, templateID string) map[string]any {
+	requestBody := map[string]any{
+		"parent": map[string]any{
+			"type":           "data_source_id",
+			"data_source_id": dataSourceID,
+		},
+		"properties": properties,
+	}
+	if templateID != "" {
+		requestBody["template"] = map[string]any{
+			"type":        "template_id",
+			"template_id": templateID,
+		}
+	}
+	return requestBody
+}
+
+func notionDateProperty(value *taskdomain.DateRange) map[string]any {
+	date := map[string]any{
+		"start": value.Start.Format(time.RFC3339),
+	}
+	if value.End != nil {
+		date["end"] = value.End.Format(time.RFC3339)
+	}
+	if value.TimeZone != "" {
+		date["time_zone"] = value.TimeZone
+	}
+	return map[string]any{
+		"type": "date",
+		"date": date,
+	}
+}
+
+func templatesFromResponse(response map[string]any) ([]tasksync.Template, error) {
+	values, ok := response["templates"].([]any)
+	if !ok {
+		return nil, fmt.Errorf("notion templates response does not include templates")
+	}
+
+	templates := make([]tasksync.Template, 0, len(values))
+	for _, value := range values {
+		template := mapValue(value)
+		if template == nil {
+			return nil, fmt.Errorf("notion template has unexpected shape")
+		}
+		templates = append(templates, tasksync.Template{
+			ID:        stringValue(template["id"]),
+			Name:      stringValue(template["name"]),
+			IsDefault: boolValue(template["is_default"]),
+		})
+	}
+	return templates, nil
 }
 
 func (client *Client) RetrieveDatabaseTasks(ctx context.Context, databaseID string) ([]map[string]any, error) {

@@ -12,7 +12,6 @@ import (
 	"github.com/med-000/med-control/backend/internal/config"
 	"github.com/med-000/med-control/backend/internal/control/httpapi"
 	infracontrol "github.com/med-000/med-control/backend/internal/control/infra"
-	"github.com/med-000/med-control/backend/internal/control/memory"
 	sqlitecontrol "github.com/med-000/med-control/backend/internal/control/sqlite"
 	"github.com/med-000/med-control/infra/mattermost"
 )
@@ -22,13 +21,12 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	notificationStore, err := sqlitecontrol.NewNotificationStore(cfg.DBPath)
+	taskRepository, err := sqlitecontrol.NewItemRepository(cfg.DBPath)
 	if err != nil {
 		exitWithError(fmt.Sprintf("open backend db failed: %v", err))
 	}
-	defer notificationStore.Close()
+	defer taskRepository.Close()
 
-	taskRepository := memory.NewTaskRepository(notificationStore)
 	taskNotifier := mattermost.NewNotifier(cfg.MattermostWebhook, cfg.HTTPTimeout)
 	taskCreator := infracontrol.NewTaskCreator(cfg.InfraQuickTaskEndpoint, cfg.HTTPTimeout)
 	taskService := apptask.NewService(taskRepository, taskNotifier, taskCreator)
@@ -38,7 +36,9 @@ func main() {
 	handler := httpapi.NewHandler(taskService, httpapi.MattermostCommandTokens{
 		Remind: cfg.MattermostRemindToken,
 		Quick:  cfg.MattermostQuickToken,
-	})
+		Create: cfg.MattermostCreateToken,
+		Work:   cfg.MattermostWorkToken,
+	}, cfg.NotionWorkTemplateID)
 	handler.Register(mux)
 
 	fmt.Printf("backend listening on %s\n", cfg.Addr)

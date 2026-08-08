@@ -12,10 +12,17 @@ type TaskSource interface {
 	FetchTaskByPageID(ctx context.Context, pageID string) (taskdomain.Task, error)
 	CreateTask(ctx context.Context, command taskdomain.CreateCommand) (taskdomain.Task, error)
 	FetchRawRows(ctx context.Context) ([]map[string]any, error)
+	ListTemplates(ctx context.Context) ([]Template, error)
 }
 
 type TaskDestination interface {
 	SendTasks(ctx context.Context, tasks []taskdomain.Task) error
+}
+
+type Template struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	IsDefault bool   `json:"is_default"`
 }
 
 type Service struct {
@@ -36,6 +43,10 @@ func (service *Service) FetchTasks(ctx context.Context) ([]taskdomain.Task, erro
 
 func (service *Service) FetchRawRows(ctx context.Context) ([]map[string]any, error) {
 	return service.source.FetchRawRows(ctx)
+}
+
+func (service *Service) ListTemplates(ctx context.Context) ([]Template, error) {
+	return service.source.ListTemplates(ctx)
 }
 
 func (service *Service) SyncTasks(ctx context.Context) ([]taskdomain.Task, error) {

@@ -29,6 +29,7 @@ func NewHandler(taskSync *tasksync.Service, webhookVerificationToken string) *Ha
 
 func (handler *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /health", handler.health)
+	mux.HandleFunc("GET /notion/templates", handler.notionTemplates)
 	mux.HandleFunc("POST /notion/webhook", handler.notionWebhook)
 	mux.HandleFunc("POST /tasks/quick", handler.quickTask)
 }
@@ -40,7 +41,7 @@ func (handler *Handler) health(writer http.ResponseWriter, request *http.Request
 }
 
 func (handler *Handler) quickTask(writer http.ResponseWriter, request *http.Request) {
-	var command quickTaskRequest
+	var command taskdomain.CreateCommand
 	if err := json.NewDecoder(request.Body).Decode(&command); err != nil {
 		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
@@ -52,15 +53,26 @@ func (handler *Handler) quickTask(writer http.ResponseWriter, request *http.Requ
 		return
 	}
 
-	task, err := handler.taskSync.CreateTask(request.Context(), taskdomain.CreateCommand{
-		Title: title,
-	})
+	command.Title = title
+	task, err := handler.taskSync.CreateTask(request.Context(), command)
 	if err != nil {
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	writeJSON(writer, http.StatusCreated, task)
+}
+
+func (handler *Handler) notionTemplates(writer http.ResponseWriter, request *http.Request) {
+	templates, err := handler.taskSync.ListTemplates(request.Context())
+	if err != nil {
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(writer, http.StatusOK, map[string]any{
+		"templates": templates,
+	})
 }
 
 func (handler *Handler) notionWebhook(writer http.ResponseWriter, request *http.Request) {
@@ -151,10 +163,6 @@ type notionWebhookEvent struct {
 	ID                string              `json:"id"`
 	Type              string              `json:"type"`
 	Entity            notionWebhookEntity `json:"entity"`
-}
-
-type quickTaskRequest struct {
-	Title string `json:"title"`
 }
 
 type notionWebhookEntity struct {

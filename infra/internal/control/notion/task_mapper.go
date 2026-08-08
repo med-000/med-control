@@ -177,6 +177,11 @@ func stringValue(value any) string {
 	return result
 }
 
+func boolValue(value any) bool {
+	result, _ := value.(bool)
+	return result
+}
+
 func numberString(value any) string {
 	switch number := value.(type) {
 	case float64:

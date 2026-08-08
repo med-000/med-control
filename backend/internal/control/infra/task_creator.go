@@ -35,9 +35,7 @@ func (creator *TaskCreator) CreateTask(ctx context.Context, command taskdomain.C
 		return taskdomain.Task{}, fmt.Errorf("INFRA_QUICK_TASK_ENDPOINT is required")
 	}
 
-	body, err := json.Marshal(map[string]string{
-		"title": command.Title,
-	})
+	body, err := json.Marshal(command)
 	if err != nil {
 		return taskdomain.Task{}, err
 	}

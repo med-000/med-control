@@ -3,6 +3,7 @@ package notion
 import (
 	"context"
 
+	"github.com/med-000/med-control/infra/internal/app/tasksync"
 	taskdomain "github.com/med-000/med-control/shared/domain/task"
 )
 
@@ -22,6 +23,10 @@ func (repository *TaskRepository) FetchRawRows(ctx context.Context) ([]map[strin
 	return repository.client.RetrieveDatabaseRows(ctx, repository.databaseID)
 }
 
+func (repository *TaskRepository) ListTemplates(ctx context.Context) ([]tasksync.Template, error) {
+	return repository.client.ListDatabaseTemplates(ctx, repository.databaseID)
+}
+
 func (repository *TaskRepository) FetchTasks(ctx context.Context) ([]taskdomain.Task, error) {
 	rows, err := repository.client.RetrieveDatabaseTasks(ctx, repository.databaseID)
 	if err != nil {
@@ -32,7 +37,7 @@ func (repository *TaskRepository) FetchTasks(ctx context.Context) ([]taskdomain.
 }
 
 func (repository *TaskRepository) CreateTask(ctx context.Context, command taskdomain.CreateCommand) (taskdomain.Task, error) {
-	row, err := repository.client.CreateDatabaseTask(ctx, repository.databaseID, command.Title)
+	row, err := repository.client.CreateDatabaseTask(ctx, repository.databaseID, command)
 	if err != nil {
 		return taskdomain.Task{}, err
 	}
