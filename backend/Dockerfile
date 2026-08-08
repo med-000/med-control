@@ -19,7 +19,15 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /out/backend ./cmd/app
 
 FROM alpine:3.20
 
-RUN apk add --no-cache sqlite && addgroup -S app && adduser -S app -G app && mkdir -p /data && chown app:app /data
+RUN for attempt in 1 2 3 4 5; do \
+      apk add --no-cache sqlite && break; \
+      if [ "$attempt" = "5" ]; then exit 1; fi; \
+      sleep $((attempt * 5)); \
+    done \
+    && addgroup -S app \
+    && adduser -S app -G app \
+    && mkdir -p /data \
+    && chown app:app /data
 USER app
 
 COPY --from=build /out/backend /app/backend
