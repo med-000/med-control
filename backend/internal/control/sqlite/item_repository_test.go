@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -49,6 +50,32 @@ func TestItemRepositoryPersistsItems(t *testing.T) {
 	}
 	if got.Notification == nil || got.Notification.Start == nil || !got.Notification.Start.Equal(notificationAt) {
 		t.Fatalf("notification = %+v", got.Notification)
+	}
+}
+
+func TestItemRepositoryPersistsLargeNotionBody(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "med-control.db")
+	repository := newTestItemRepository(t, path)
+
+	description := strings.Repeat("large notion body ", 20000)
+	task := taskdomain.Task{
+		ID:          "notion:large-page-id",
+		DisplayID:   "TASK-8",
+		Title:       "large body",
+		Source:      taskdomain.SourceNotion,
+		SourceID:    "large-page-id",
+		Description: description,
+	}
+	if err := repository.UpsertMany(context.Background(), []taskdomain.Task{task}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := repository.FindByDisplayID(context.Background(), "8")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Description != description {
+		t.Fatalf("description length = %d, want %d", len(got.Description), len(description))
 	}
 }
 

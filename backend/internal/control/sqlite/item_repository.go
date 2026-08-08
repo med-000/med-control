@@ -474,7 +474,8 @@ func (repository *ItemRepository) isNotificationSent(ctx context.Context, task t
 }
 
 func (repository *ItemRepository) exec(ctx context.Context, sql string) error {
-	command := exec.CommandContext(ctx, "sqlite3", "-bail", repository.path, sql)
+	command := exec.CommandContext(ctx, "sqlite3", "-bail", repository.path)
+	command.Stdin = strings.NewReader(sql)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("sqlite3 failed: %w output=%s", err, strings.TrimSpace(string(output)))
@@ -483,7 +484,8 @@ func (repository *ItemRepository) exec(ctx context.Context, sql string) error {
 }
 
 func (repository *ItemRepository) query(ctx context.Context, sql string) (string, error) {
-	command := exec.CommandContext(ctx, "sqlite3", "-json", repository.path, sql)
+	command := exec.CommandContext(ctx, "sqlite3", "-json", repository.path)
+	command.Stdin = strings.NewReader(sql)
 	output, err := command.CombinedOutput()
 	if err != nil {
 		return "", fmt.Errorf("sqlite3 failed: %w output=%s", err, strings.TrimSpace(string(output)))
