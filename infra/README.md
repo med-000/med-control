@@ -72,20 +72,20 @@ go run ./cmd/templates
 Notion GUI から template の link を copy した場合は、URL 内の page ID 部分を使う。
 
 ```text
-https://app.notion.com/p/ollo-3b2b7863bd2f80a7a7cbf23205bf4305?v=...
+https://app.notion.com/p/<workspace>-<template_id_without_hyphens>?v=...
                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```
 
 この例では以下が template ID。
 
 ```text
-3b2b7863bd2f80a7a7cbf23205bf4305
+<template_id_without_hyphens>
 ```
 
 API の `templates[].id` は hyphen 付きで返る。
 
 ```text
-3b2b7863-bd2f-80a7-a7cb-f23205bf4305
+<template-id-with-hyphens>
 ```
 
 hyphen を除いた値が GUI link の ID と一致すれば同じ template。

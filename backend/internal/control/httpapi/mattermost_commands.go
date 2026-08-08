@@ -78,7 +78,7 @@ func (handler *Handler) createTaskFromMattermostCommand(writer http.ResponseWrit
 
 	command, err := parseCreateTaskText(request.FormValue("text"), priority)
 	if err != nil {
-		writeMattermostResponse(writer, http.StatusOK, fmt.Sprintf("usage: /%s <title> <date> <notification>", commandName))
+		writeMattermostResponse(writer, http.StatusOK, fmt.Sprintf("usage: /%s <title> <date_mmddhhmm> <notification_mmddhhmm>", commandName))
 		return
 	}
 
@@ -182,11 +182,12 @@ func parseCreateTaskText(text string, priority *taskdomain.SelectOption) (taskdo
 		return taskdomain.CreateCommand{}, fmt.Errorf("invalid create task text")
 	}
 
-	date, err := parseCommandDate(fields[len(fields)-2])
+	now := time.Now()
+	date, err := parseMMDDHHMM(fields[len(fields)-2], now)
 	if err != nil {
 		return taskdomain.CreateCommand{}, err
 	}
-	notification, err := parseCommandNotification(fields[len(fields)-1], date)
+	notification, err := parseMMDDHHMM(fields[len(fields)-1], now)
 	if err != nil {
 		return taskdomain.CreateCommand{}, err
 	}
@@ -202,29 +203,6 @@ func parseCreateTaskText(text string, priority *taskdomain.SelectOption) (taskdo
 		Notification: &taskdomain.DateRange{Start: &notification},
 		Priority:     cloneSelectOption(priority),
 	}, nil
-}
-
-func parseCommandDate(value string) (time.Time, error) {
-	for _, layout := range []string{time.DateOnly, time.RFC3339, "2006-01-02T15:04"} {
-		parsed, err := time.ParseInLocation(layout, value, time.Local)
-		if err == nil {
-			return parsed, nil
-		}
-	}
-	return time.Time{}, fmt.Errorf("invalid date: %s", value)
-}
-
-func parseCommandNotification(value string, date time.Time) (time.Time, error) {
-	if parsed, err := time.ParseInLocation("15:04", value, time.Local); err == nil {
-		return time.Date(date.Year(), date.Month(), date.Day(), parsed.Hour(), parsed.Minute(), 0, 0, time.Local), nil
-	}
-	for _, layout := range []string{time.RFC3339, "2006-01-02T15:04", time.DateOnly} {
-		parsed, err := time.ParseInLocation(layout, value, time.Local)
-		if err == nil {
-			return parsed, nil
-		}
-	}
-	return time.Time{}, fmt.Errorf("invalid notification: %s", value)
 }
 
 func cloneSelectOption(option *taskdomain.SelectOption) *taskdomain.SelectOption {
