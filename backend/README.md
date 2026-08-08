@@ -10,7 +10,7 @@
 - `POST /mattermost/commands/remind` で `/remind <No> <minutes>` を受ける
 - `POST /mattermost/commands/create` で `/create <title> <date> <notification>` を受け、infra 経由で Notion task を作る
 - `POST /mattermost/commands/quick` で `/quick <title> <date> <notification>` を受け、priority High の Notion task を作る
-- `POST /mattermost/commands/work` で `/work <start|end|todo> <start_mmdd> <end_mmdd>` を受け、Notion template 付きの勤務 item を作る
+- `POST /mattermost/commands/work` で `/work <start|end|todo> <start_mmddhhmm> <end_mmddhhmm>` を受け、Notion template 付きの勤務 item を作る
 - `TASK_NOTIFY_INTERVAL_SECONDS` を設定すると定期的に通知判定する
 
 task の local snapshot、`/remind` の一時通知時刻、通知済み履歴は SQLite に保存する。
@@ -73,6 +73,8 @@ Mattermost 側で command ごとに token が別になる場合は、`MATTERMOST
 
 ## Mattermost Slash Commands
 
+詳細は `docs/mattermost-slash-commands.md` を参照。
+
 Mattermost 側で4つ登録する。
 slash command の応答は Mattermost mobile でも見えるように `in_channel` で返す。
 
@@ -101,10 +103,10 @@ Usage: /quick <title> <date> <notification>
 Trigger Word: work
 Request URL: https://<backend-public-host>/mattermost/commands/work
 Method: POST
-Usage: /work <start|end|todo> <start_mmdd> <end_mmdd>
+Usage: /work <start|end|todo> <start_mmddhhmm> <end_mmddhhmm>
 ```
 
 `date` は `2026-08-10`、`notification` は `09:30` または `2026-08-10T09:30` を受け付ける。
 `notification` が時刻だけの場合は `date` と同じ日として扱う。
 
-`/work` の `mmdd` は現在年として扱う。`start` は Notion status `inprogress`、`end` は `done`、`todo` は `todo` に変換する。
+`/work` の `mmddhhmm` は現在年の日時として扱う。例: `08100930` は今年の 08-10 09:30。`start` は Notion status `inprogress`、`end` は `done`、`todo` は `todo` に変換する。
