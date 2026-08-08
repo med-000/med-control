@@ -103,22 +103,30 @@ func parseWorkText(text string, now time.Time, templateID string) (taskdomain.Cr
 	if err != nil {
 		return taskdomain.CreateCommand{}, err
 	}
-	start, err := parseMMDDHHMM(fields[1], now)
+	start, err := parseOptionalMMDDHHMM(fields[1], now)
 	if err != nil {
 		return taskdomain.CreateCommand{}, err
 	}
-	end, err := parseMMDDHHMM(fields[2], now)
+	end, err := parseOptionalMMDDHHMM(fields[2], now)
 	if err != nil {
 		return taskdomain.CreateCommand{}, err
 	}
-	if end.Before(start) {
+	if start == nil && end != nil {
+		return taskdomain.CreateCommand{}, fmt.Errorf("end date requires start date")
+	}
+	if start != nil && end != nil && end.Before(*start) {
 		return taskdomain.CreateCommand{}, fmt.Errorf("end date must not be before start date")
+	}
+
+	var date *taskdomain.DateRange
+	if start != nil {
+		date = &taskdomain.DateRange{Start: start, End: end, TimeZone: defaultCommandTimeZone}
 	}
 
 	return taskdomain.CreateCommand{
 		Title:      "ollo勤務",
 		Status:     status,
-		Date:       &taskdomain.DateRange{Start: &start, End: &end, TimeZone: defaultCommandTimeZone},
+		Date:       date,
 		TemplateID: templateID,
 	}, nil
 }
@@ -166,6 +174,17 @@ func parseMMDDHHMM(value string, now time.Time) (time.Time, error) {
 	return result, nil
 }
 
+func parseOptionalMMDDHHMM(value string, now time.Time) (*time.Time, error) {
+	if value == "-" {
+		return nil, nil
+	}
+	parsed, err := parseMMDDHHMM(value, now)
+	if err != nil {
+		return nil, err
+	}
+	return &parsed, nil
+}
+
 func commandLocation() *time.Location {
 	location, err := time.LoadLocation(defaultCommandTimeZone)
 	if err != nil {
@@ -195,11 +214,11 @@ func parseCreateTaskText(text string, priority *taskdomain.SelectOption) (taskdo
 	}
 
 	now := time.Now()
-	date, err := parseMMDDHHMM(fields[len(fields)-2], now)
+	date, err := parseOptionalMMDDHHMM(fields[len(fields)-2], now)
 	if err != nil {
 		return taskdomain.CreateCommand{}, err
 	}
-	notification, err := parseMMDDHHMM(fields[len(fields)-1], now)
+	notification, err := parseOptionalMMDDHHMM(fields[len(fields)-1], now)
 	if err != nil {
 		return taskdomain.CreateCommand{}, err
 	}
@@ -209,12 +228,17 @@ func parseCreateTaskText(text string, priority *taskdomain.SelectOption) (taskdo
 		return taskdomain.CreateCommand{}, fmt.Errorf("title is required")
 	}
 
-	return taskdomain.CreateCommand{
-		Title:        title,
-		Date:         &taskdomain.DateRange{Start: &date, TimeZone: defaultCommandTimeZone},
-		Notification: &taskdomain.DateRange{Start: &notification, TimeZone: defaultCommandTimeZone},
-		Priority:     cloneSelectOption(priority),
-	}, nil
+	command := taskdomain.CreateCommand{
+		Title:    title,
+		Priority: cloneSelectOption(priority),
+	}
+	if date != nil {
+		command.Date = &taskdomain.DateRange{Start: date, TimeZone: defaultCommandTimeZone}
+	}
+	if notification != nil {
+		command.Notification = &taskdomain.DateRange{Start: notification, TimeZone: defaultCommandTimeZone}
+	}
+	return command, nil
 }
 
 func cloneSelectOption(option *taskdomain.SelectOption) *taskdomain.SelectOption {

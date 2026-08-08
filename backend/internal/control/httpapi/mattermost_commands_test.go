@@ -41,6 +41,37 @@ func TestParseCreateTaskTextAppliesPriority(t *testing.T) {
 	}
 }
 
+func TestParseCreateTaskTextAllowsDashForEmptyDateOptions(t *testing.T) {
+	command, err := parseCreateTaskText("write report - -", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if command.Title != "write report" {
+		t.Fatalf("Title = %q, want write report", command.Title)
+	}
+	if command.Date != nil {
+		t.Fatalf("Date = %+v, want nil", command.Date)
+	}
+	if command.Notification != nil {
+		t.Fatalf("Notification = %+v, want nil", command.Notification)
+	}
+}
+
+func TestParseCreateTaskTextAllowsDashForEmptyNotification(t *testing.T) {
+	command, err := parseCreateTaskText("write report 08100930 -", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if command.Date == nil || command.Date.Start == nil {
+		t.Fatalf("Date = %+v", command.Date)
+	}
+	if command.Notification != nil {
+		t.Fatalf("Notification = %+v, want nil", command.Notification)
+	}
+}
+
 func TestParseCreateTaskTextRejectsMissingFields(t *testing.T) {
 	_, err := parseCreateTaskText("title only", nil)
 	if err == nil {
@@ -75,6 +106,41 @@ func TestParseWorkText(t *testing.T) {
 	}
 	if command.Date.End.Format("2006-01-02 15:04") != "2026-08-11 18:45" {
 		t.Fatalf("Date.End = %s", command.Date.End.Format("2006-01-02 15:04"))
+	}
+}
+
+func TestParseWorkTextAllowsDashForEmptyEnd(t *testing.T) {
+	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
+	command, err := parseWorkText("start 08100930 -", now, "template-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if command.Date == nil || command.Date.Start == nil {
+		t.Fatalf("Date = %+v", command.Date)
+	}
+	if command.Date.End != nil {
+		t.Fatalf("Date.End = %+v, want nil", command.Date.End)
+	}
+}
+
+func TestParseWorkTextAllowsDashForEmptyDate(t *testing.T) {
+	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
+	command, err := parseWorkText("todo - -", now, "template-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if command.Date != nil {
+		t.Fatalf("Date = %+v, want nil", command.Date)
+	}
+}
+
+func TestParseWorkTextRejectsEndWithoutStart(t *testing.T) {
+	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
+	_, err := parseWorkText("start - 08101845", now, "template-id")
+	if err == nil {
+		t.Fatal("error should be returned")
 	}
 }
 

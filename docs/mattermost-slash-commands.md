@@ -55,6 +55,7 @@ Usage: /create <title> <date_mmddhhmm> <notification_mmddhhmm>
 
 末尾2つの token を `date` と `notification` として扱い、それより前を title にする。
 日時 token は `mmddhhmm` 形式で、現在年として扱う。
+日時 token に `-` を入れると、その値は未指定として Notion に送らない。
 
 ### quick
 
@@ -73,6 +74,7 @@ Usage: /quick <title> <date_mmddhhmm> <notification_mmddhhmm>
 
 `create` と同じ形式で Notion item を作る。
 違いは priority を `High` にすること。
+`date` / `notification` は `-` で未指定にできる。
 
 ### work
 
@@ -90,6 +92,7 @@ Usage: /work <start|end|todo> <start_mmddhhmm> <end_mmddhhmm>
 ```
 
 `mmddhhmm` は現在年の日時として扱う。
+`end_mmddhhmm` は `-` で未指定にできる。`start_mmddhhmm` と `end_mmddhhmm` の両方を `-` にすると date を未指定にする。
 
 ```text
 08100930 -> YYYY-08-10 09:30

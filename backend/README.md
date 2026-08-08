@@ -106,4 +106,4 @@ Method: POST
 Usage: /work <start|end|todo> <start_mmddhhmm> <end_mmddhhmm>
 ```
 
-`mmddhhmm` は現在年の日時として扱う。例: `08100930` は今年の 08-10 09:30。`/work` の `start` は Notion status `inprogress`、`end` は `done`、`todo` は `todo` に変換する。
+`mmddhhmm` は現在年の日時として扱う。例: `08100930` は今年の 08-10 09:30。日時 token は `-` で未指定にできる。`/work` の `start` は Notion status `inprogress`、`end` は `done`、`todo` は `todo` に変換する。
