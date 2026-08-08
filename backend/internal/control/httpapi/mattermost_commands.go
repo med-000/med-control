@@ -58,7 +58,7 @@ func (handler *Handler) workCommand(writer http.ResponseWriter, request *http.Re
 
 	command, err := parseWorkText(request.FormValue("text"), handler.now(), handler.workTemplateID)
 	if err != nil {
-		writeMattermostResponse(writer, http.StatusOK, "usage: /work <start|end|todo> <start_mmdd> <end_mmdd>")
+		writeMattermostResponse(writer, http.StatusOK, "usage: /work <start|end|todo> <start_mmddhhmm> <end_mmddhhmm>")
 		return
 	}
 
@@ -101,11 +101,11 @@ func parseWorkText(text string, now time.Time, templateID string) (taskdomain.Cr
 	if err != nil {
 		return taskdomain.CreateCommand{}, err
 	}
-	start, err := parseMMDD(fields[1], now)
+	start, err := parseMMDDHHMM(fields[1], now)
 	if err != nil {
 		return taskdomain.CreateCommand{}, err
 	}
-	end, err := parseMMDD(fields[2], now)
+	end, err := parseMMDDHHMM(fields[2], now)
 	if err != nil {
 		return taskdomain.CreateCommand{}, err
 	}
@@ -134,22 +134,30 @@ func workStatus(value string) (*taskdomain.SelectOption, error) {
 	}
 }
 
-func parseMMDD(value string, now time.Time) (time.Time, error) {
-	if len(value) != 4 {
-		return time.Time{}, fmt.Errorf("invalid mmdd: %s", value)
+func parseMMDDHHMM(value string, now time.Time) (time.Time, error) {
+	if len(value) != 8 {
+		return time.Time{}, fmt.Errorf("invalid mmddhhmm: %s", value)
 	}
 	month, err := strconv.Atoi(value[:2])
 	if err != nil {
 		return time.Time{}, fmt.Errorf("invalid month: %s", value[:2])
 	}
-	day, err := strconv.Atoi(value[2:])
+	day, err := strconv.Atoi(value[2:4])
 	if err != nil {
-		return time.Time{}, fmt.Errorf("invalid day: %s", value[2:])
+		return time.Time{}, fmt.Errorf("invalid day: %s", value[2:4])
+	}
+	hour, err := strconv.Atoi(value[4:6])
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid hour: %s", value[4:6])
+	}
+	minute, err := strconv.Atoi(value[6:])
+	if err != nil {
+		return time.Time{}, fmt.Errorf("invalid minute: %s", value[6:])
 	}
 
-	result := time.Date(now.Year(), time.Month(month), day, 0, 0, 0, 0, time.Local)
-	if result.Month() != time.Month(month) || result.Day() != day {
-		return time.Time{}, fmt.Errorf("invalid mmdd: %s", value)
+	result := time.Date(now.Year(), time.Month(month), day, hour, minute, 0, 0, time.Local)
+	if result.Month() != time.Month(month) || result.Day() != day || result.Hour() != hour || result.Minute() != minute {
+		return time.Time{}, fmt.Errorf("invalid mmddhhmm: %s", value)
 	}
 	return result, nil
 }

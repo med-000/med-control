@@ -44,7 +44,7 @@ func TestParseCreateTaskTextRejectsMissingFields(t *testing.T) {
 
 func TestParseWorkText(t *testing.T) {
 	now := time.Date(2026, 8, 10, 12, 0, 0, 0, time.UTC)
-	command, err := parseWorkText("start 0810 0811", now, "template-id")
+	command, err := parseWorkText("start 08100930 08111845", now, "template-id")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,11 +61,11 @@ func TestParseWorkText(t *testing.T) {
 	if command.Date == nil || command.Date.Start == nil || command.Date.End == nil {
 		t.Fatalf("Date = %+v", command.Date)
 	}
-	if command.Date.Start.Format("2006-01-02") != "2026-08-10" {
-		t.Fatalf("Date.Start = %s", command.Date.Start.Format("2006-01-02"))
+	if command.Date.Start.Format("2006-01-02 15:04") != "2026-08-10 09:30" {
+		t.Fatalf("Date.Start = %s", command.Date.Start.Format("2006-01-02 15:04"))
 	}
-	if command.Date.End.Format("2006-01-02") != "2026-08-11" {
-		t.Fatalf("Date.End = %s", command.Date.End.Format("2006-01-02"))
+	if command.Date.End.Format("2006-01-02 15:04") != "2026-08-11 18:45" {
+		t.Fatalf("Date.End = %s", command.Date.End.Format("2006-01-02 15:04"))
 	}
 }
 
