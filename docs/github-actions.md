@@ -22,12 +22,12 @@ med-control-deploy
 
 GitHub が自動で「どのディレクトリに push するか」を選ぶわけではない。
 
-deploy workflow が以下を使って、反映先を明示している。
+deploy workflow は SSH 接続先だけを GitHub Secrets から受け取り、反映先 path は repo 側で固定している。
 
 ```text
 SSH_HOST
 SSH_USER
-DEPLOY_PATH
+/srv/med-control
 ```
 
 今回の方式では、デプロイ先ホストに事前に repo を clone しておく。
@@ -45,12 +45,12 @@ git checkout main
 Actions はその後、ホスト上で以下を実行する。
 
 ```sh
-cd "$DEPLOY_PATH"
+cd /srv/med-control
 git fetch origin main
 git reset --hard origin/main
 ```
 
-つまり、反映先は GitHub 側が選ぶのではなく、`DEPLOY_PATH` で指定した clone 済みディレクトリ。
+つまり、反映先は GitHub 側が選ぶのではなく、この repo の deploy workflow / deploy script が決めた `/srv/med-control`。
 
 ## Workflows
 
@@ -99,7 +99,7 @@ workflow_dispatch
 
 - GitHub-hosted runner が Tailscale に一時参加
 - deploy host に SSH
-- `DEPLOY_PATH` の clone 済み repo を `origin/main` に更新
+- `/srv/med-control` の clone 済み repo を `origin/main` に更新
 - GitHub Secrets の `BACKEND_ENV_FILE` と `INFRA_ENV_FILE` から `.env` を生成してホストへ配置
 - `sudo -n /usr/local/bin/deploy-med-control check` で構成確認
 - push または `apply=deploy` では `sudo -n /usr/local/bin/deploy-med-control recreate`
@@ -117,7 +117,7 @@ Repository
 -> Secrets
 ```
 
-Environment は使わず、repository secrets / variables に置く。
+Environment は使わず、repository secrets に置く。
 
 ## 必要な Secrets
 
@@ -176,22 +176,8 @@ Tailscale OAuth client は `tag:github-actions` を使えるようにしてお�
 
 ## Variables
 
-必須:
-
-```text
-DEPLOY_PATH
-```
-
-初期値の例:
-
-```text
-DEPLOY_PATH=/srv/med-control
-```
-
-`DEPLOY_PATH` は必須。ホスト上の clone 済み repo の絶対パス。
-`bin/deploy-med-control` の `APP_DIR` と合わせるため、現在は `/srv/med-control` 固定。
-
-app 設定は GitHub Variables に分けず、ディレクトリ名に対応した `BACKEND_ENV_FILE` / `INFRA_ENV_FILE` の Secret にまとめる。
+この workflow では GitHub Variables は使わない。
+deploy 先 path は `/srv/med-control` に固定し、app 設定は GitHub Variables に分けず、ディレクトリ名に対応した `BACKEND_ENV_FILE` / `INFRA_ENV_FILE` の Secret にまとめる。
 `.env` の項目を増やす場合は `.env.example` と app config を更新し、対応する `*_ENV_FILE` の本文も更新する。
 
 ## 手動 deploy
@@ -238,7 +224,7 @@ GitHub Actions 用の SSH public key を deploy user の `~/.ssh/authorized_keys
 
 private key は GitHub Secret `SSH_PRIVATE_KEY` に入れる。
 
-Docker Compose の永続データは deploy host の `$DEPLOY_PATH/data/` に置く。
+Docker Compose の永続データは deploy host の `/srv/med-control/data/` に置く。
 `data/` は Git 追跡対象外。
 
 app 内 Caddy は `med-control-caddy` という container name で `med2-gateway` network に参加する。

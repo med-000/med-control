@@ -31,7 +31,6 @@ jobs:
       SSH_PORT: ${{ secrets.SSH_PORT }}
       TS_OAUTH_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
       TS_OAUTH_SECRET: ${{ secrets.TS_OAUTH_SECRET }}
-      DEPLOY_PATH: ${{ vars.DEPLOY_PATH }}
       BACKEND_ENV_FILE: ${{ secrets.BACKEND_ENV_FILE }}
       INFRA_ENV_FILE: ${{ secrets.INFRA_ENV_FILE }}
     steps:
@@ -39,7 +38,7 @@ jobs:
 
       - name: Validate deploy environment
         run: |
-          required='SSH_HOST SSH_USER SSH_PRIVATE_KEY DEPLOY_PATH TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET BACKEND_ENV_FILE INFRA_ENV_FILE'
+          required='SSH_HOST SSH_USER SSH_PRIVATE_KEY TS_OAUTH_CLIENT_ID TS_OAUTH_SECRET BACKEND_ENV_FILE INFRA_ENV_FILE'
           for name in $required; do
             value="$(printenv "$name" || true)"
             if [ -z "$value" ]; then
@@ -47,10 +46,6 @@ jobs:
               exit 1
             fi
           done
-          if [ "$DEPLOY_PATH" != "/srv/med-control" ]; then
-            echo "DEPLOY_PATH must match bin/deploy-med-control APP_DIR: /srv/med-control" >&2
-            exit 1
-          fi
 
       - name: Generate env files from GitHub values
         run: sh .github/scripts/write-env-files.sh
@@ -73,14 +68,14 @@ jobs:
       - name: Update clone on host
         run: |
           port="${SSH_PORT:-22}"
-          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "cd '$DEPLOY_PATH' && git fetch origin main && git reset --hard origin/main"
+          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "cd /srv/med-control && git fetch origin main && git reset --hard origin/main"
 
       - name: Write env files on host
         run: |
           port="${SSH_PORT:-22}"
-          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "cd '$DEPLOY_PATH' && mkdir -p backend infra"
-          scp -i ~/.ssh/med-control_deploy_key -P "$port" backend/.env "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/backend/.env"
-          scp -i ~/.ssh/med-control_deploy_key -P "$port" infra/.env "$SSH_USER@$SSH_HOST:$DEPLOY_PATH/infra/.env"
+          ssh -i ~/.ssh/med-control_deploy_key -p "$port" "$SSH_USER@$SSH_HOST" "cd /srv/med-control && mkdir -p backend infra"
+          scp -i ~/.ssh/med-control_deploy_key -P "$port" backend/.env "$SSH_USER@$SSH_HOST:/srv/med-control/backend/.env"
+          scp -i ~/.ssh/med-control_deploy_key -P "$port" infra/.env "$SSH_USER@$SSH_HOST:/srv/med-control/infra/.env"
 
       - name: Check on host
         run: |
