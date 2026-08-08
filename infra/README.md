@@ -8,6 +8,7 @@
 - page 本文を Markdown に変換
 - `shared/domain/task.Task` に整形
 - backend に POST
+- 毎日 01:00 台に、前日までの label が `schedule` かつ status が `done` ではない item を Notion status `done` にする
 - `GET /notion/templates` で Notion data source template の一覧を返す
 - `POST /notion/webhook` で Notion Webhook を受け、該当 page を即時同期
 - `POST /tasks/quick` で backend から task 作成依頼を受け、Notion page を作る
@@ -107,3 +108,22 @@ Event types:
 
 初回登録時、Notion は `verification_token` を送る。infra のログに出る token を Notion の verify 画面に貼る。
 本番では同じ token を `NOTION_WEBHOOK_VERIFICATION_TOKEN` に入れると `X-Notion-Signature` を検証する。
+
+## Auto Completion
+
+infra worker は毎日 01:00 台に前日までの未完了 schedule item を閉じる。
+
+対象:
+
+```text
+label: schedule
+date.start: 当日 00:00 より前
+status: done 以外
+```
+
+処理:
+
+```text
+Notion status -> done
+updated item -> backend に同期
+```

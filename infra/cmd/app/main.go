@@ -63,6 +63,7 @@ func main() {
 			stop()
 		}
 	}()
+	go service.RunScheduleCompletionLoop(ctx)
 
 	log.Printf("notion sync worker started: interval=%s", cfg.NotionSyncInterval)
 	service.RunSyncLoop(ctx, cfg.NotionSyncInterval)
