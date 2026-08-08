@@ -11,8 +11,8 @@
 - `POST /mattermost/commands/quick` で `/quick <title>` を受け、infra 経由で Notion task を作る
 - `TASK_NOTIFY_INTERVAL_SECONDS` を設定すると定期的に通知判定する
 
-現状の task 保存先は in-memory。再起動すると保持 task と `/remind` の一時通知時刻は消える。
-通知済み履歴は SQLite に保存するため、再起動後も同じ通知時刻の二重通知を避けられる。
+task の local snapshot、`/remind` の一時通知時刻、通知済み履歴は SQLite に保存する。
+Notion を正本とし、SQLite は med-control 側の cache / 制御状態 / 履歴を持つ。
 
 ## 構成
 
@@ -20,11 +20,15 @@
 cmd/app                       起動口
 internal/app/task             task usecase
 internal/control/httpapi      HTTP handler
-internal/control/memory       in-memory repository
+internal/control/sqlite       SQLite repository
+internal/control/memory       test/local in-memory repository
 internal/config               env config
 ```
 
 Mattermost webhook の具体実装は `infra/mattermost` に置き、backend はそれを注入して使う。
+
+`internal/app/task` が usecase と port を持つ。
+`internal/control/*` は HTTP / SQLite / 外部 service への adapter とし、filter 判定や通知 key 生成のような domain rule は `shared/domain/task` に置く。
 
 ## 実行
 
@@ -55,6 +59,7 @@ HTTP_TIMEOUT_SECONDS=10
 `BACKEND_DB_PATH` には通知済み履歴を保存する SQLite file を指定する。
 Docker Compose では repo 配下の `data/backend/` を container の `/data` に mount し、`data/backend/med-control.db` に保存する。
 `data/` は Git 追跡対象外。
+table 設計は `docs/database.md` を参照。
 
 `MATTERMOST_COMMAND_TOKEN` は `/remind` と `/quick` 共通 token として使える。
 Mattermost 側で command ごとに token が別になる場合は、`MATTERMOST_REMIND_COMMAND_TOKEN` と `MATTERMOST_QUICK_COMMAND_TOKEN` を使う。

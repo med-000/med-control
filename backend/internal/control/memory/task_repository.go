@@ -2,7 +2,6 @@ package memory
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"time"
 
@@ -15,25 +14,13 @@ type TaskRepository struct {
 	tasks                map[string]taskdomain.Task
 	reminderOverrides    map[string]taskdomain.DateRange
 	sentNotificationKeys map[string]time.Time
-	notificationStore    NotificationStore
 }
 
-type NotificationStore interface {
-	IsNotificationSent(ctx context.Context, notificationKey string) (bool, error)
-	MarkNotificationSent(ctx context.Context, notificationKey string, task taskdomain.Task, sentAt time.Time) error
-}
-
-func NewTaskRepository(stores ...NotificationStore) *TaskRepository {
-	var notificationStore NotificationStore
-	if len(stores) > 0 {
-		notificationStore = stores[0]
-	}
-
+func NewTaskRepository() *TaskRepository {
 	return &TaskRepository{
 		tasks:                make(map[string]taskdomain.Task),
 		reminderOverrides:    make(map[string]taskdomain.DateRange),
 		sentNotificationKeys: make(map[string]time.Time),
-		notificationStore:    notificationStore,
 	}
 }
 
@@ -59,7 +46,7 @@ func (repository *TaskRepository) List(ctx context.Context, filter taskdomain.Fi
 
 	result := make([]taskdomain.Task, 0, len(repository.tasks))
 	for _, task := range repository.tasks {
-		if !matchesFilter(task, filter) {
+		if !taskdomain.MatchesFilter(task, filter) {
 			continue
 		}
 		result = append(result, task)
@@ -72,7 +59,7 @@ func (repository *TaskRepository) FindByDisplayID(ctx context.Context, displayID
 	defer repository.mu.RUnlock()
 
 	for _, task := range repository.tasks {
-		if displayIDMatches(task.DisplayID, displayID) {
+		if taskdomain.DisplayIDMatches(task.DisplayID, displayID) {
 			return task, nil
 		}
 	}
@@ -84,7 +71,7 @@ func (repository *TaskRepository) ScheduleReminder(ctx context.Context, displayI
 	defer repository.mu.Unlock()
 
 	for id, task := range repository.tasks {
-		if !displayIDMatches(task.DisplayID, displayID) {
+		if !taskdomain.DisplayIDMatches(task.DisplayID, displayID) {
 			continue
 		}
 
@@ -128,129 +115,20 @@ func (repository *TaskRepository) MarkNotificationSent(ctx context.Context, task
 	if err := repository.markNotificationSent(ctx, task, sentAt); err != nil {
 		return err
 	}
-	if override, exists := repository.reminderOverrides[task.ID]; exists && sameNotificationStart(&override, task.Notification) {
+	if override, exists := repository.reminderOverrides[task.ID]; exists && taskdomain.SameNotificationStart(&override, task.Notification) {
 		delete(repository.reminderOverrides, task.ID)
 	}
 	return nil
 }
 
 func (repository *TaskRepository) isNotificationSent(ctx context.Context, task taskdomain.Task) (bool, error) {
-	key := notificationKey(task)
-	if repository.notificationStore != nil {
-		return repository.notificationStore.IsNotificationSent(ctx, key)
-	}
+	key := taskdomain.NotificationKey(task)
 	_, sent := repository.sentNotificationKeys[key]
 	return sent, nil
 }
 
 func (repository *TaskRepository) markNotificationSent(ctx context.Context, task taskdomain.Task, sentAt time.Time) error {
-	key := notificationKey(task)
-	if repository.notificationStore != nil {
-		return repository.notificationStore.MarkNotificationSent(ctx, key, task, sentAt)
-	}
+	key := taskdomain.NotificationKey(task)
 	repository.sentNotificationKeys[key] = sentAt
 	return nil
-}
-
-func notificationKey(task taskdomain.Task) string {
-	if task.Notification == nil || task.Notification.Start == nil {
-		return task.ID
-	}
-	return task.ID + ":" + task.Notification.Start.Format(time.RFC3339Nano)
-}
-
-func sameNotificationStart(left *taskdomain.DateRange, right *taskdomain.DateRange) bool {
-	if left == nil || right == nil || left.Start == nil || right.Start == nil {
-		return false
-	}
-	return left.Start.Equal(*right.Start)
-}
-
-func matchesFilter(task taskdomain.Task, filter taskdomain.Filter) bool {
-	if len(filter.DisplayIDs) > 0 && !displayIDIn(task.DisplayID, filter.DisplayIDs) {
-		return false
-	}
-	if len(filter.StatusIDs) > 0 && !selectIDIn(task.Status, filter.StatusIDs) {
-		return false
-	}
-	if len(filter.StatusNames) > 0 && !selectNameIn(task.Status, filter.StatusNames) {
-		return false
-	}
-	if len(filter.LabelIDs) > 0 && !selectIDIn(task.Label, filter.LabelIDs) {
-		return false
-	}
-	if len(filter.LabelNames) > 0 && !selectNameIn(task.Label, filter.LabelNames) {
-		return false
-	}
-	if len(filter.PriorityIDs) > 0 && !selectIDIn(task.Priority, filter.PriorityIDs) {
-		return false
-	}
-	if len(filter.CategoryIDs) > 0 && !selectIDsInclude(task.Categories, filter.CategoryIDs) {
-		return false
-	}
-	if filter.From != nil && (task.Date == nil || task.Date.Start == nil || task.Date.Start.Before(*filter.From)) {
-		return false
-	}
-	if filter.To != nil && (task.Date == nil || task.Date.Start == nil || task.Date.Start.After(*filter.To)) {
-		return false
-	}
-	return true
-}
-
-func displayIDIn(displayID string, ids []string) bool {
-	for _, id := range ids {
-		if displayIDMatches(displayID, id) {
-			return true
-		}
-	}
-	return false
-}
-
-func displayIDMatches(displayID string, query string) bool {
-	displayID = strings.ToLower(strings.TrimSpace(displayID))
-	query = strings.ToLower(strings.TrimSpace(query))
-	if displayID == "" || query == "" {
-		return false
-	}
-	if displayID == query {
-		return true
-	}
-
-	hyphen := strings.LastIndex(displayID, "-")
-	return hyphen >= 0 && displayID[hyphen+1:] == query
-}
-
-func selectIDIn(option *taskdomain.SelectOption, ids []string) bool {
-	if option == nil {
-		return false
-	}
-	for _, id := range ids {
-		if option.ID == id {
-			return true
-		}
-	}
-	return false
-}
-
-func selectNameIn(option *taskdomain.SelectOption, names []string) bool {
-	if option == nil {
-		return false
-	}
-	for _, name := range names {
-		if option.Name == name {
-			return true
-		}
-	}
-	return false
-}
-
-func selectIDsInclude(options []taskdomain.SelectOption, ids []string) bool {
-	for _, option := range options {
-		for _, id := range ids {
-			if option.ID == id {
-				return true
-			}
-		}
-	}
-	return false
 }
