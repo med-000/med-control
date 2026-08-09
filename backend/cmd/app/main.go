@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	apptask "github.com/med-000/med-control/backend/internal/app/task"
 	"github.com/med-000/med-control/backend/internal/config"
@@ -14,9 +15,12 @@ import (
 	infracontrol "github.com/med-000/med-control/backend/internal/control/infra"
 	sqlitecontrol "github.com/med-000/med-control/backend/internal/control/sqlite"
 	"github.com/med-000/med-control/infra/mattermost"
+	"github.com/med-000/med-control/shared/timeutil"
 )
 
 func main() {
+	time.Local = timeutil.JST()
+
 	cfg := config.Load()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()

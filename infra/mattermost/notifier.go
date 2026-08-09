@@ -11,6 +11,7 @@ import (
 	"time"
 
 	taskdomain "github.com/med-000/med-control/shared/domain/task"
+	"github.com/med-000/med-control/shared/timeutil"
 )
 
 type Notifier struct {
@@ -97,13 +98,11 @@ func formatTaskMessage(task taskdomain.Task) string {
 }
 
 func formatDateTime(value time.Time, timeZone string) string {
-	location := time.Local
+	location := timeutil.JST()
 	if timeZone != "" {
 		if loaded, err := time.LoadLocation(timeZone); err == nil {
 			location = loaded
 		}
-	} else if loaded, err := time.LoadLocation("Asia/Tokyo"); err == nil {
-		location = loaded
 	}
 
 	return value.In(location).Format("2006-01-02 15:04")

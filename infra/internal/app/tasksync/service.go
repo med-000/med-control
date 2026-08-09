@@ -7,6 +7,7 @@ import (
 	"time"
 
 	taskdomain "github.com/med-000/med-control/shared/domain/task"
+	"github.com/med-000/med-control/shared/timeutil"
 )
 
 type TaskSource interface {
@@ -149,8 +150,9 @@ func shouldCompleteScheduleItem(task taskdomain.Task, now time.Time) bool {
 		return false
 	}
 
-	localNow := now.In(time.Local)
-	today := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, time.Local)
-	start := task.Date.Start.In(time.Local)
+	location := timeutil.JST()
+	localNow := now.In(location)
+	today := time.Date(localNow.Year(), localNow.Month(), localNow.Day(), 0, 0, 0, 0, location)
+	start := task.Date.Start.In(location)
 	return start.Before(today)
 }

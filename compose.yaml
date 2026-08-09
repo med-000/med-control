@@ -2,6 +2,8 @@ services:
   caddy:
     image: caddy:2.8-alpine
     container_name: med-control-caddy
+    environment:
+      TZ: "Asia/Tokyo"
     volumes:
       - ./network/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
     depends_on:
@@ -20,6 +22,7 @@ services:
     env_file:
       - backend/.env
     environment:
+      TZ: "Asia/Tokyo"
       BACKEND_ADDR: ":8080"
       BACKEND_DB_PATH: "/data/med-control.db"
       INFRA_QUICK_TASK_ENDPOINT: "http://infra:8080/tasks/quick"
@@ -40,6 +43,7 @@ services:
     env_file:
       - infra/.env
     environment:
+      TZ: "Asia/Tokyo"
       BACKEND_TASKS_ENDPOINT: "http://backend:8080/tasks/import"
       NOTION_SYNC_INTERVAL_SECONDS: "300"
       NOTION_WEBHOOK_ADDR: ":8080"
