@@ -4,6 +4,8 @@ import (
 	"context"
 	"log"
 	"time"
+
+	"github.com/med-000/med-control/shared/timeutil"
 )
 
 func (service *Service) RunSyncLoop(ctx context.Context, interval time.Duration) {
@@ -32,6 +34,7 @@ func (service *Service) RunScheduleCompletionLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case now := <-ticker.C:
+			now = now.In(timeutil.JST())
 			if now.Hour() != 1 {
 				continue
 			}

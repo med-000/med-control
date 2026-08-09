@@ -12,6 +12,7 @@ import (
 
 	"github.com/med-000/med-control/infra/internal/app/tasksync"
 	taskdomain "github.com/med-000/med-control/shared/domain/task"
+	"github.com/med-000/med-control/shared/timeutil"
 )
 
 type Client struct {
@@ -211,8 +212,8 @@ func createTaskRequestBody(dataSourceID string, properties map[string]any, templ
 }
 
 func notionDateProperty(value *taskdomain.DateRange) map[string]any {
-	timeZone := firstNonEmptyString(value.TimeZone, "Asia/Tokyo")
-	location := time.Local
+	timeZone := firstNonEmptyString(value.TimeZone, timeutil.JSTName)
+	location := timeutil.JST()
 	if loaded, err := time.LoadLocation(timeZone); err == nil {
 		location = loaded
 	}

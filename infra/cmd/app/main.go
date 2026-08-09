@@ -8,15 +8,19 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/med-000/med-control/infra/internal/app/tasksync"
 	"github.com/med-000/med-control/infra/internal/config"
 	backendcontrol "github.com/med-000/med-control/infra/internal/control/backend"
 	"github.com/med-000/med-control/infra/internal/control/httpapi"
 	notioncontrol "github.com/med-000/med-control/infra/internal/control/notion"
+	"github.com/med-000/med-control/shared/timeutil"
 )
 
 func main() {
+	time.Local = timeutil.JST()
+
 	cfg := config.Load()
 	if cfg.NotionAPIKey == "" {
 		exitWithError("NOTION_API_KEY is required")

@@ -20,7 +20,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /out/backend ./cmd/app
 FROM alpine:3.20
 
 RUN for attempt in 1 2 3 4 5; do \
-      apk add --no-cache sqlite && break; \
+      apk add --no-cache sqlite tzdata && break; \
       if [ "$attempt" = "5" ]; then exit 1; fi; \
       sleep $((attempt * 5)); \
     done \
@@ -29,6 +29,8 @@ RUN for attempt in 1 2 3 4 5; do \
     && mkdir -p /data \
     && chown app:app /data
 USER app
+
+ENV TZ=Asia/Tokyo
 
 COPY --from=build /out/backend /app/backend
 

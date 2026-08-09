@@ -10,9 +10,10 @@ import (
 
 	apptask "github.com/med-000/med-control/backend/internal/app/task"
 	taskdomain "github.com/med-000/med-control/shared/domain/task"
+	"github.com/med-000/med-control/shared/timeutil"
 )
 
-const defaultCommandTimeZone = "Asia/Tokyo"
+const defaultCommandTimeZone = timeutil.JSTName
 
 func (handler *Handler) remindCommand(writer http.ResponseWriter, request *http.Request) {
 	if !handler.validMattermostCommand(writer, request, handler.tokens.Remind) {
@@ -186,11 +187,7 @@ func parseOptionalMMDDHHMM(value string, now time.Time) (*time.Time, error) {
 }
 
 func commandLocation() *time.Location {
-	location, err := time.LoadLocation(defaultCommandTimeZone)
-	if err != nil {
-		return time.Local
-	}
-	return location
+	return timeutil.JST()
 }
 
 func parseRemindText(text string) (string, int, error) {

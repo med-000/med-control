@@ -17,8 +17,12 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /out/infra ./cmd/app
 
 FROM alpine:3.20
 
-RUN addgroup -S app && adduser -S app -G app
+RUN apk add --no-cache tzdata \
+    && addgroup -S app \
+    && adduser -S app -G app
 USER app
+
+ENV TZ=Asia/Tokyo
 
 COPY --from=build /out/infra /app/infra
 
