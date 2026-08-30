@@ -57,5 +57,5 @@ services:
 
 networks:
   gateway:
-    name: med2-gateway
+    name: "${MED_CONTROL_GATEWAY_NETWORK:-med4svc-med-control-gateway}"
     external: true
