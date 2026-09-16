@@ -19,6 +19,13 @@ type Notifier struct {
 	httpClient *http.Client
 }
 
+type BotNotifier struct {
+	apiBaseURL string
+	token      string
+	channelID  string
+	httpClient *http.Client
+}
+
 func NewNotifier(webhookURL string, timeout time.Duration) *Notifier {
 	if timeout <= 0 {
 		timeout = 10 * time.Second
@@ -26,6 +33,21 @@ func NewNotifier(webhookURL string, timeout time.Duration) *Notifier {
 
 	return &Notifier{
 		webhookURL: webhookURL,
+		httpClient: &http.Client{
+			Timeout: timeout,
+		},
+	}
+}
+
+func NewBotNotifier(apiBaseURL string, token string, channelID string, timeout time.Duration) *BotNotifier {
+	if timeout <= 0 {
+		timeout = 10 * time.Second
+	}
+
+	return &BotNotifier{
+		apiBaseURL: strings.TrimRight(apiBaseURL, "/"),
+		token:      token,
+		channelID:  channelID,
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
@@ -63,6 +85,50 @@ func (notifier *Notifier) SendTaskNotification(ctx context.Context, task taskdom
 
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
 		return fmt.Errorf("mattermost request failed: status=%d body=%s", response.StatusCode, string(responseBody))
+	}
+
+	return nil
+}
+
+func (notifier *BotNotifier) SendTaskNotification(ctx context.Context, task taskdomain.Task) error {
+	if notifier.apiBaseURL == "" {
+		return fmt.Errorf("mattermost bot API base URL is required")
+	}
+	if notifier.token == "" {
+		return fmt.Errorf("mattermost bot token is required")
+	}
+	if notifier.channelID == "" {
+		return fmt.Errorf("mattermost bot channel ID is required")
+	}
+
+	body, err := json.Marshal(map[string]string{
+		"channel_id": notifier.channelID,
+		"message":    formatTaskMessage(task),
+	})
+	if err != nil {
+		return err
+	}
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, notifier.apiBaseURL+"/api/v4/posts", bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Authorization", "Bearer "+notifier.token)
+	request.Header.Set("Content-Type", "application/json")
+
+	response, err := notifier.httpClient.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+
+	responseBody, err := io.ReadAll(response.Body)
+	if err != nil {
+		return err
+	}
+
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return fmt.Errorf("mattermost bot request failed: status=%d body=%s", response.StatusCode, string(responseBody))
 	}
 
 	return nil

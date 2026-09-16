@@ -31,7 +31,10 @@ func main() {
 	}
 	defer taskRepository.Close()
 
-	taskNotifier := mattermost.NewNotifier(cfg.MattermostWebhook, cfg.HTTPTimeout)
+	taskNotifier, err := newTaskNotifier(cfg)
+	if err != nil {
+		exitWithError(err.Error())
+	}
 	taskCreator := infracontrol.NewTaskCreator(cfg.InfraQuickTaskEndpoint, cfg.HTTPTimeout)
 	taskService := apptask.NewService(taskRepository, taskNotifier, taskCreator)
 	go taskService.RunNotificationLoop(ctx, cfg.TaskNotifyInterval)
@@ -54,4 +57,27 @@ func main() {
 func exitWithError(message string) {
 	fmt.Fprintln(os.Stderr, message)
 	os.Exit(1)
+}
+
+func newTaskNotifier(cfg config.Config) (apptask.Notifier, error) {
+	botValues := []string{
+		cfg.MattermostBotAPIURL,
+		cfg.MattermostBotToken,
+		cfg.MattermostBotChannelID,
+	}
+	botConfiguredCount := 0
+	for _, value := range botValues {
+		if value != "" {
+			botConfiguredCount++
+		}
+	}
+
+	if botConfiguredCount == len(botValues) {
+		return mattermost.NewBotNotifier(cfg.MattermostBotAPIURL, cfg.MattermostBotToken, cfg.MattermostBotChannelID, cfg.HTTPTimeout), nil
+	}
+	if botConfiguredCount > 0 {
+		return nil, fmt.Errorf("MATTERMOST_BOT_API_URL, MATTERMOST_BOT_TOKEN, and MATTERMOST_BOT_CHANNEL_ID must all be set to use Mattermost bot notifications")
+	}
+
+	return mattermost.NewNotifier(cfg.MattermostWebhook, cfg.HTTPTimeout), nil
 }

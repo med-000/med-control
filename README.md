@@ -7,7 +7,7 @@ Notion と Mattermost を使ったカレンダー兼タスク管理の自動化�
 ```text
 network/  app 内 gateway。外部入口を backend / infra に振り分ける
 backend/   アプリの中心。タスク保持、READ API、通知判定を担当
-infra/     外部サービス連携。Notion 取得、Mattermost webhook 実装を担当
+infra/     外部サービス連携。Notion 取得、Mattermost 通知実装を担当
 shared/    backend と infra で共有する domain 型
 frontend/  今後の frontend 置き場
 docs/      設計・運用メモ
