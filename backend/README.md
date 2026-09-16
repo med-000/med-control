@@ -27,7 +27,8 @@ internal/control/memory       test/local in-memory repository
 internal/config               env config
 ```
 
-Mattermost webhook の具体実装は `infra/mattermost` に置き、backend はそれを注入して使う。
+Mattermost 通知の具体実装は `infra/mattermost` に置き、backend はそれを注入して使う。
+通知は bot 設定が揃っている場合は bot 投稿を使い、未設定の場合は既存の Incoming Webhook を使う。
 
 `internal/app/task` が usecase と port を持つ。
 `internal/control/*` は HTTP / SQLite / 外部 service への adapter とし、filter 判定や通知 key 生成のような domain rule は `shared/domain/task` に置く。
@@ -50,6 +51,9 @@ go run ./cmd/app
 BACKEND_ADDR=:8080
 BACKEND_DB_PATH=/data/med-control.db
 MATTERMOST_MED_CONTROL_WEBHOOK=
+MATTERMOST_BOT_API_URL=
+MATTERMOST_BOT_TOKEN=
+MATTERMOST_BOT_CHANNEL_ID=
 MATTERMOST_COMMAND_TOKEN=
 MATTERMOST_REMIND_COMMAND_TOKEN=
 MATTERMOST_QUICK_COMMAND_TOKEN=
@@ -68,6 +72,21 @@ table 設計は `docs/database.md` を参照。
 
 `MATTERMOST_COMMAND_TOKEN` は `/remind`、`/create`、`/quick`、`/work` 共通 token として使える。
 Mattermost 側で command ごとに token が別になる場合は、`MATTERMOST_REMIND_COMMAND_TOKEN`、`MATTERMOST_CREATE_COMMAND_TOKEN`、`MATTERMOST_QUICK_COMMAND_TOKEN`、`MATTERMOST_WORK_COMMAND_TOKEN` を使う。
+
+Mattermost mobile のバッジ通知が必要な場合は、Incoming Webhook ではなく bot 投稿を使う。
+Mattermost で bot account を作成し、通知先 channel に bot を参加させたうえで、次を `backend/.env` に設定する。
+
+```env
+MATTERMOST_BOT_API_URL=https://<mattermost-host>
+MATTERMOST_BOT_TOKEN=<bot-access-token>
+MATTERMOST_BOT_CHANNEL_ID=<target-channel-id>
+```
+
+`MATTERMOST_BOT_API_URL` は `/api/v4` を含めない Mattermost server URL。
+`MATTERMOST_BOT_TOKEN` は bot account の access token。
+`MATTERMOST_BOT_CHANNEL_ID` は通知を投稿する channel の ID。
+3 つすべてが設定されている場合は bot 投稿を使い、未設定の場合は `MATTERMOST_MED_CONTROL_WEBHOOK` による従来の webhook 投稿を使う。
+一部だけ設定されている場合は誤設定として backend 起動時に失敗する。
 
 `NOTION_WORK_TEMPLATE_ID` には `ollo勤務` template の ID を入れる。
 

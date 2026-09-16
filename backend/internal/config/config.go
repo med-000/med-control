@@ -13,6 +13,9 @@ type Config struct {
 	Addr                   string
 	DBPath                 string
 	MattermostWebhook      string
+	MattermostBotAPIURL    string
+	MattermostBotToken     string
+	MattermostBotChannelID string
 	MattermostCommandToken string
 	MattermostRemindToken  string
 	MattermostQuickToken   string
@@ -38,6 +41,9 @@ func Load() Config {
 		Addr:                   addr,
 		DBPath:                 stringWithFallback(os.Getenv("BACKEND_DB_PATH"), "/data/med-control.db"),
 		MattermostWebhook:      os.Getenv("MATTERMOST_MED_CONTROL_WEBHOOK"),
+		MattermostBotAPIURL:    os.Getenv("MATTERMOST_BOT_API_URL"),
+		MattermostBotToken:     os.Getenv("MATTERMOST_BOT_TOKEN"),
+		MattermostBotChannelID: os.Getenv("MATTERMOST_BOT_CHANNEL_ID"),
 		MattermostCommandToken: os.Getenv("MATTERMOST_COMMAND_TOKEN"),
 		MattermostRemindToken:  firstNonEmpty(os.Getenv("MATTERMOST_REMIND_COMMAND_TOKEN"), os.Getenv("MATTERMOST_COMMAND_TOKEN")),
 		MattermostQuickToken:   firstNonEmpty(os.Getenv("MATTERMOST_QUICK_COMMAND_TOKEN"), os.Getenv("MATTERMOST_COMMAND_TOKEN")),

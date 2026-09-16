@@ -12,7 +12,7 @@
 - `GET /notion/templates` で Notion data source template の一覧を返す
 - `POST /notion/webhook` で Notion Webhook を受け、該当 page を即時同期
 - `POST /tasks/quick` で backend から task 作成依頼を受け、Notion page を作る
-- Mattermost Incoming Webhook 送信実装を `infra/mattermost` に保持
+- Mattermost 通知送信実装を `infra/mattermost` に保持
 
 ## 構成
 
@@ -24,7 +24,7 @@ internal/app/tasksync      同期 usecase
 internal/control/httpapi   Notion Webhook handler
 internal/control/notion    Notion API client / mapper / schema
 internal/control/backend   backend への送信
-mattermost                 Mattermost webhook 実装
+mattermost                 Mattermost 通知実装
 ```
 
 Notion DB のカラム名は `internal/control/notion/schema.go` にまとめる。
